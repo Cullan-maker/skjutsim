@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Banan-Simulatorn (Mantis-klon)</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1e1e1e;
+            color: #ffffff;
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #ui-container {
+            padding: 20px;
+            text-align: center;
+            z-index: 10;
+        }
+        canvas {
+            background-color: #2a2a2a;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+            max-width: 95vw;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            margin: 10px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            touch-action: manipulation; /* Förhindrar dubbelklick-zoom på mobil */
+        }
+        button:active { background-color: #45a049; }
+        #shootBtn { background-color: #f44336; display: none; }
+        #shootBtn:active { background-color: #da190b; }
+        #scoreBoard { font-size: 24px; font-weight: bold; margin-top: 10px; min-height: 30px;}
+    </style>
+</head>
+<body>
+
+    <div id="ui-container">
+        <h2>Skjutsimulator</h2>
+        <button id="startBtn">Kalibrera & Sikta</button>
+        <button id="shootBtn">SKJUT!</button>
+        <div id="scoreBoard"></div>
+    </div>
+
+    <canvas id="targetCanvas" width="300" height="400"></canvas>
+
+    <script>
+        const canvas = document.getElementById('targetCanvas');
+        const ctx = canvas.getContext('2d');
+        const startBtn = document.getElementById('startBtn');
+        const shootBtn = document.getElementById('shootBtn');
+        const scoreBoard = document.getElementById('scoreBoard');
+
+        let isAiming = false;
+        let trace = [];
+        let startBeta = null;
+        let startGamma = null;
+        
+        // Siktets position
+        let currentX = canvas.width / 2;
+        let currentY = canvas.height / 2;
+
+        // Känslighet (hur mycket siktet rör sig baserat på telefonens lutning)
+        const sensitivity = 15; 
+
+        // Rita måltavlan
+        function drawTarget() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            
+            for (let i = 5; i > 0; i--) {
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, i * 25, 0, 2 * Math.PI);
+                ctx.fillStyle = i % 2 === 0 ? '#eeeeee' : '#dd3333';
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#222';
+                ctx.stroke();
+            }
+        }
+
+        // Rita ut spåret (Hold och Trigger)
+        function drawTrace() {
+            if (trace.length < 2) return;
+            
+            const now = Date.now();
+            ctx.lineWidth = 3;
+
+            for (let i = 1; i < trace.length; i++) {
+                const point = trace[i];
+                const prevPoint = trace[i-1];
+                
+                ctx.beginPath();
+                ctx.moveTo(prevPoint.x, prevPoint.y);
+                ctx.lineTo(point.x, point.y);
+
+                // Om punkten registrerades precis innan skottet (Trigger pull) -> Gul. Annars Grön (Hold)
+                if (now - point.time < 500 && !isAiming) {
+                    ctx.strokeStyle = '#FFD700'; // Gul för Trigger pull
+                } else {
+                    ctx.strokeStyle = '#00FF00'; // Grön för Hold
+                }
+                ctx.stroke();
+            }
+            
+            // Markera själva träffen om vi har skjutit
+            if (!isAiming) {
+                const lastPoint = trace[trace.length - 1];
+                ctx.beginPath();
+                ctx.arc(lastPoint.x, lastPoint.y, 6, 0, 2 * Math.PI);
+                ctx.fillStyle = '#00FFFF'; // Cyanblå träff
+                ctx.fill();
+            }
+        }
+
+        // Uppdateringsloop för skärmen
+        function updateScreen() {
+            drawTarget();
+            
+            if (isAiming) {
+                // Spara position i spåret
+                trace.push({ x: currentX, y: currentY, time: Date.now() });
+                // Behåll bara de senaste 3 sekunderna för att spara minne
+                if (trace.length > 150) trace.shift(); 
+                
+                // Rita nuvarande sikte (Crosshair)
+                ctx.beginPath();
+                ctx.arc(currentX, currentY, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = 'white';
+                ctx.fill();
+            }
+
+            drawTrace();
+
+            if (isAiming) {
+                requestAnimationFrame(updateScreen);
+            }
+        }
+
+        // Hantera telefonens sensorer
+        function handleOrientation(event) {
+            if (!isAiming) return;
+
+            let beta = event.beta;   // Lutning framåt/bakåt
+            let gamma = event.gamma; // Lutning vänster/höger
+
+            // Sätt nollpunkt vid kalibrering
+            if (startBeta === null) {
+                startBeta = beta;
+                startGamma = gamma;
+            }
+
+            // Räkna ut skillnaden från nollpunkten och flytta siktet
+            let deltaX = gamma - startGamma;
+            let deltaY = beta - startBeta;
+
+            // Om telefonen hålls i landskapsläge kan beta och gamma behöva byta plats beroende på skärmorientering, 
+            // men detta fungerar bra som en grund för stående läge.
+            currentX = (canvas.width / 2) + (deltaX * sensitivity);
+            currentY = (canvas.height / 2) + (deltaY * sensitivity);
+
+            // Håll siktet inom skärmen
+            currentX = Math.max(0, Math.min(canvas.width, currentX));
+            currentY = Math.max(0, Math.min(canvas.height, currentY));
+        }
+
+        // Starta kalibrering och siktning
+        startBtn.addEventListener('click', async () => {
+            // iOS 13+ kräver att användaren godkänner sensoranvändning
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                try {
+                    const permission = await DeviceOrientationEvent.requestPermission();
+                    if (permission !== 'granted') {
+                        alert('Du måste tillåta rörelsesensorer för att simulatorn ska fungera!');
+                        return;
+                    }
+                } catch (error) {
+                    console.error(error);
+                }
+            }
+
+            startBeta = null;
+            startGamma = null;
+            trace = [];
+            scoreBoard.innerText = "";
+            isAiming = true;
+            
+            startBtn.style.display = 'none';
+            shootBtn.style.display = 'inline-block';
+            
+            window.addEventListener('deviceorientation', handleOrientation);
+            updateScreen();
+        });
+
+        // Avfyra skottet
+        shootBtn.addEventListener('click', () => {
+            isAiming = false;
+            window.removeEventListener('deviceorientation', handleOrientation);
+            
+            startBtn.style.display = 'inline-block';
+            startBtn.innerText = 'Börja om';
+            shootBtn.style.display = 'none';
+
+            // Beräkna poäng (0-100) baserat på avstånd till mitten
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const lastPoint = trace[trace.length - 1];
+            
+            if(lastPoint) {
+                const distance = Math.sqrt(Math.pow(lastPoint.x - centerX, 2) + Math.pow(lastPoint.y - centerY, 2));
+                const maxDistance = canvas.width / 2;
+                let score = Math.max(0, 100 - (distance / maxDistance * 100));
+                scoreBoard.innerText = `Poäng: ${score.toFixed(1)} / 100`;
+            }
+            
+            // Uppdatera skärmen en sista gång för att visa hela spåret
+            updateScreen(); 
+        });
+
+        // Rita tavlan direkt när sidan laddas
+        drawTarget();
+    </script>
+</body>
+</html>
