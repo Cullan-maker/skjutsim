@@ -2,368 +2,131 @@
 <html lang="sv">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, viewport-fit=cover">
-    <title>Mantis-Klonen v2.1.0 ULTIMATE</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Kontroll (Telefon)</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        * { box-sizing: border-box; }
-        body {
-            margin: 0; padding: 0; background-color: #030303; color: #ffffff;
-            font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: row; 
-            height: 100dvh; width: 100vw; overflow: hidden;
-        }
-
-        #visuals-panel { 
-            flex: 1.3; display: flex; flex-direction: column; align-items: center; 
-            justify-content: space-evenly; padding: 10px; background-color: #111;
-            border-right: 2px solid #333; position: relative;
-        }
-
-        .view-container { display: flex; flex-direction: column; align-items: center; width: 100%; height: 48%; }
-        canvas { 
-            background-color: #1a1a1a; border-radius: 8px; border: 1px solid #333;
-            max-width: 100%; max-height: 85%; object-fit: contain; 
-        }
-
-        #controls-panel { 
-            flex: 1; display: flex; flex-direction: column; padding: 15px; 
-            background-color: #050505; justify-content: flex-start;
-        }
-
-        #scoreBoard { font-size: 26px; font-weight: bold; text-align: center; color: #00FFFF; margin-bottom: 5px; }
+        body { margin: 0; background: #000; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100dvh; }
         
-        #diagBoard { 
-            background: rgba(0, 255, 255, 0.05); border: 1px solid #00FFFF;
-            padding: 10px; border-radius: 10px; font-size: 14px; text-align: center;
-            color: #00FFFF; margin-bottom: 10px; min-height: 80px;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-        }
-
-        .stats-row { font-size: 11px; color: #888; display: flex; gap: 10px; margin-top: 5px; }
+        #setupScreen { display: flex; flex-direction: column; align-items: center; gap: 15px; }
+        input { font-size: 30px; text-align: center; width: 200px; padding: 10px; border-radius: 10px; border: 2px solid #4CAF50; background: #111; color: white;}
         
-        .section-label { font-size: 10px; color: #666; margin-bottom: 3px; text-transform: uppercase; }
-        .mode-selector { display: flex; gap: 5px; margin-bottom: 10px; }
-        .mode-btn {
-            flex: 1; padding: 8px; font-size: 11px; background: #222; color: #aaa;
-            border: 1px solid #444; border-radius: 5px; cursor: pointer;
-        }
-        .mode-btn.active { background: #007bff; color: white; border-color: #fff; }
+        #controlScreen { display: none; width: 100%; height: 100%; flex-direction: column; padding: 20px; box-sizing: border-box;}
+        button { padding: 20px; font-size: 20px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; color: white;}
         
-        .trig-btn.active { background: #ff9800; color: #000; border-color: #fff; }
-
-        #shootBtn { 
-            background-color: #c62828; display: none; width: 100%; margin-top: 5px;
-            flex-grow: 1; font-size: 32px; border-radius: 15px; 
-            border: none; border-bottom: 8px solid #5d1111; color: white; font-weight: bold;
-        }
-        #shootBtn:active { transform: translateY(4px); border-bottom: 2px solid #5d1111; }
-
-        #startBtn { 
-            width: 100%; padding: 15px; background: #2e7d32; color: white; 
-            border: none; border-radius: 10px; font-weight: bold; font-size: 16px; margin-top: 5px;
-        }
-
-        #sensorStatus { font-size: 10px; color: #888; text-align: center; margin-top: 5px; min-height: 15px;}
-        #version-tag { position: absolute; bottom: 5px; left: 10px; font-size: 10px; color: #444; }
+        .btn-green { background: #2e7d32; }
+        .btn-red { background: #c62828; flex-grow: 1; font-size: 40px; margin-top: 15px;}
+        
+        #status { font-size: 14px; color: #888; text-align: center; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <div id="visuals-panel">
-        <div class="view-container"><canvas id="frontCanvas" width="600" height="600"></canvas></div>
-        <div class="view-container"><canvas id="sideCanvas" width="600" height="300"></canvas></div>
-        <div id="version-tag">Build v2.1.0 PRO (Side-View Restored)</div>
+    <div id="setupScreen">
+        <h2>Ange koden från datorn</h2>
+        <input type="number" id="roomCodeInput" placeholder="1234">
+        <button class="btn-green" id="connectBtn">ANSLUT TILL DATORN</button>
+        <div id="status">Väntar på kod...</div>
     </div>
 
-    <div id="controls-panel">
-        <div id="scoreBoard">VÄLJER LÄGE...</div>
-        <div id="diagBoard">
-            <div id="diagText">Gör dina inställningar och tryck Kalibrera.</div>
-            <div class="stats-row">
-                <span id="streakStat">Streak: 0</span>
-                <span id="avgStat">Snitt: 0</span>
-            </div>
-        </div>
-
-        <div class="section-label">MONTERING PÅ VAPNET</div>
-        <div class="mode-selector">
-            <button id="mntSide" class="mode-btn active">SIDAN</button>
-            <button id="mntTop" class="mode-btn">OVANPÅ</button>
-        </div>
-
-        <div class="section-label">AVFYRNINGSMETOD</div>
-        <div class="mode-selector">
-            <button id="trigScreen" class="mode-btn trig-btn active">SKÄRM</button>
-            <button id="trigMag" class="mode-btn trig-btn">MAGNET</button>
-            <button id="trigMic" class="mode-btn trig-btn">LJUD (Smäll)</button>
-        </div>
+    <div id="controlScreen">
+        <h2 style="text-align: center; color:#00FF00;">ANSLUTEN!</h2>
+        <p style="text-align: center; color:#888;">Rikta vapnet mot mitten av skärmen och tryck Kalibrera.</p>
         
-        <button id="startBtn">KALIBRERA & STARTA</button>
-        <button id="shootBtn">AVFYRA</button>
-        <div id="sensorStatus">Väntar på start...</div>
+        <button class="btn-green" id="calibBtn">KALIBRERA & AKTIVERA MIKROFON</button>
+        <button class="btn-red" id="fireBtn">NÖD-AVFYRNING (SKÄRM)</button>
+        <div id="micStatus" style="text-align:center; margin-top:10px; color:#aaa;"></div>
     </div>
 
     <script>
-        const cFront = document.getElementById('frontCanvas'), ctxF = cFront.getContext('2d');
-        const cSide = document.getElementById('sideCanvas'), ctxS = cSide.getContext('2d');
-        const btnStart = document.getElementById('startBtn'), btnShoot = document.getElementById('shootBtn');
-        const elScore = document.getElementById('scoreBoard'), elDiag = document.getElementById('diagText');
-        const elStatus = document.getElementById('sensorStatus');
-
-        let isAiming = false, trace = [], shotHistory = [], audioCtx = null;
+        const peer = new Peer();
+        let conn = null;
+        let isAiming = false;
         let startA = null, startB = null, startG = null;
-        let rawX = 300, rawY = 300;
-        let streak = 0, totalScore = 0;
-        const TIME_WINDOW = 3000; // Sidovyn visar 3 sekunder bakåt
+        
+        let micCtx, analyser, micStream, lastFire = 0;
 
-        let mountMode = 'side'; 
-        let triggerMode = 'screen'; 
-        let initialMag = null; 
-        const magThreshold = 45; 
-        const micThreshold = 0.5; 
-
-        let micCtx = null, analyser = null, micStream = null, lastFireTime = 0;
-
-        document.getElementById('mntSide').onclick = () => { mountMode = 'side'; updateUI(); };
-        document.getElementById('mntTop').onclick = () => { mountMode = 'top'; updateUI(); };
-        document.getElementById('trigScreen').onclick = () => { triggerMode = 'screen'; updateUI(); };
-        document.getElementById('trigMag').onclick = () => { triggerMode = 'mag'; updateUI(); };
-        document.getElementById('trigMic').onclick = () => { triggerMode = 'mic'; updateUI(); };
-
-        function updateUI() {
-            document.getElementById('mntSide').classList.toggle('active', mountMode === 'side');
-            document.getElementById('mntTop').classList.toggle('active', mountMode === 'top');
-            document.getElementById('trigScreen').classList.toggle('active', triggerMode === 'screen');
-            document.getElementById('trigMag').classList.toggle('active', triggerMode === 'mag');
-            document.getElementById('trigMic').classList.toggle('active', triggerMode === 'mic');
+        // Anslutnings-logik
+        document.getElementById('connectBtn').onclick = () => {
+            const code = document.getElementById('roomCodeInput').value;
+            document.getElementById('status').innerText = "Ansluter...";
             
-            elStatus.innerText = triggerMode === 'mic' ? 'Kräver mikrofon-åtkomst.' : 
-                                 triggerMode === 'mag' ? 'Kräver magnet/kompass.' : 'Manuell touch-avfyrning.';
-        }
+            conn = peer.connect('banan-' + code);
+            
+            conn.on('open', () => {
+                document.getElementById('setupScreen').style.display = 'none';
+                document.getElementById('controlScreen').style.display = 'flex';
+                // Hindra skärmen från att slockna (Wake Lock API)
+                if('wakeLock' in navigator) navigator.wakeLock.request('screen');
+            });
+        };
 
-        function bang() {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
-            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(160, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(20, audioCtx.currentTime + 0.1);
-            gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
-            gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.2);
-        }
-
-        function coachSay(text) {
-            const msg = new SpeechSynthesisUtterance(text);
-            msg.lang = 'sv-SE'; window.speechSynthesis.speak(msg);
-        }
-
+        // Gyro-logik (Skickar X/Y till datorn över nätverket)
         window.addEventListener('deviceorientation', e => {
-            if(!isAiming) return;
-            
+            if(!isAiming || !conn) return;
             if(startA === null) { startA=e.alpha; startB=e.beta; startG=e.gamma; }
-            let dx, dy;
-            if (mountMode === 'side') { dx = e.gamma - startG; dy = e.alpha - startA; } 
-            else { dx = e.alpha - startA; dy = e.beta - startB; }
+            
+            // Vi utgår från "Sidan"-montering här, går att bygga ut som tidigare
+            let dx = e.gamma - startG;
+            let dy = e.alpha - startA;
             if (dx > 180) dx -= 360; if (dx < -180) dx += 360;
             
-            rawX = 300 + (dx * 22); rawY = 300 - (dy * 22);
-            trace.push({x:rawX, y:rawY, time:Date.now()});
-            if(trace.length > 200) trace.shift();
-
-            if (triggerMode === 'mag' && (e.absolute || e.webkitCompassHeading)) {
-                let currentMag = e.webkitCompassHeading || e.alpha;
-                if (initialMag === null) initialMag = currentMag;
-                let magDiff = Math.abs(currentMag - initialMag);
-                if (magDiff > 180) magDiff = 360 - magDiff;
-                
-                elStatus.innerText = `Mag-störning: ${magDiff.toFixed(1)} / ${magThreshold}`;
-                if (magDiff > magThreshold) triggerFire();
-            }
+            let rawX = 300 + (dx * 20); 
+            let rawY = 300 - (dy * 20);
+            
+            // Skicka siktet till datorn! 60fps
+            conn.send({ type: 'aim', x: rawX, y: rawY });
         });
 
-        async function startMic() {
-            try {
-                if(micStream) return; 
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                micStream = stream;
-                micCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const source = micCtx.createMediaStreamSource(stream);
-                analyser = micCtx.createAnalyser();
-                analyser.fftSize = 256;
-                source.connect(analyser);
-                listenMic();
-            } catch (err) {
-                alert("Kunde inte starta mikrofonen.");
-                triggerMode = 'screen'; updateUI();
+        // Kalibrera & Mikrofon
+        document.getElementById('calibBtn').onclick = async () => {
+            if(typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission) {
+                await DeviceOrientationEvent.requestPermission();
             }
-        }
+            startA = null; isAiming = true;
+            document.getElementById('calibBtn').innerText = "KALIBRERA OM";
+            
+            // Starta Mic för akustisk avfyrning
+            if(!micStream) {
+                try {
+                    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    micCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const source = micCtx.createMediaStreamSource(micStream);
+                    analyser = micCtx.createAnalyser();
+                    source.connect(analyser);
+                    listenMic();
+                } catch(e) { document.getElementById('micStatus').innerText = "Mic nekad. Använd skärm-knapp."; }
+            }
+        };
 
         function listenMic() {
-            if (triggerMode !== 'mic' || !isAiming) {
-                requestAnimationFrame(listenMic); return;
-            }
+            if(!isAiming) { requestAnimationFrame(listenMic); return; }
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
             analyser.getByteTimeDomainData(dataArray);
-            
             let maxVol = 0;
             for(let i=0; i<dataArray.length; i++) {
                 let v = Math.abs(dataArray[i] - 128);
                 if(v > maxVol) maxVol = v;
             }
-            
-            let volLevel = maxVol / 128; 
-            elStatus.innerText = `Ljudnivå: ${(volLevel*100).toFixed(0)}%`;
+            let volLevel = maxVol / 128;
+            document.getElementById('micStatus').innerText = `Mic Volym: ${(volLevel*100).toFixed(0)}%`;
 
-            if (volLevel > micThreshold && (Date.now() - lastFireTime > 1000)) triggerFire();
+            // Avfyra om det klickar/smäller!
+            if (volLevel > 0.5 && Date.now() - lastFire > 1000) {
+                fireCommand();
+            }
             requestAnimationFrame(listenMic);
         }
 
-        function getFeedback() {
-            if(trace.length < 5) return { text: "För snabbt skott.", voice: "Skott registrerat."};
-            const hit = trace[trace.length - 1];
-            const startTrigger = trace[Math.max(0, trace.length - 15)]; 
-            const dX = hit.x - startTrigger.x, dY = hit.y - startTrigger.y;
-            const offX = hit.x - 300, offY = hit.y - 300;
+        document.getElementById('fireBtn').onclick = fireCommand;
 
-            let cause = [], result = [];
-            if (dY > 22) cause.push("dippade pipan"); else if (dY < -22) cause.push("lyfte pipan");
-            if (dX > 22) cause.push("drog åt höger"); else if (dX < -22) cause.push("ryckte avtryckaren");
-            if (offY > 35) result.push("lågt"); else if (offY < -35) result.push("högt");
-            if (offX > 35) result.push("till vänster"); else if (offX < -35) result.push("till höger");
-
-            if (cause.length === 0 && result.length === 0) return { text: "Perfekt avfyrning!", voice: "Snyggt skott!" };
-            
-            const causeStr = cause.length > 0 ? cause.join(" och ") : "ostödigt sikte";
-            const resultStr = result.length > 0 ? "skottet gick " + result.join(" och ") : "träffen blev ändå bra";
-            return {
-                text: `Analys: ${causeStr.charAt(0).toUpperCase() + causeStr.slice(1)}, ${resultStr}.`,
-                voice: `${causeStr}. ${resultStr}.`
-            };
-        }
-
-        function triggerFire() {
-            if (!isAiming) return;
-            isAiming = false; lastFireTime = Date.now(); 
-            
-            bang();
-            if(navigator.vibrate) navigator.vibrate(80);
-            
-            const hit = trace[trace.length-1] || {x:300, y:300};
-            const dist = Math.sqrt(Math.pow(hit.x-300,2) + Math.pow(hit.y-300,2));
-            const score = Math.max(0, 100 - (dist/3.2));
-            
-            totalScore += score; shotHistory.push(hit);
-            
-            const feedback = getFeedback();
-            if (score > 90 && !feedback.text.includes("ryckte") && !feedback.text.includes("dippade")) streak++; 
-            else streak = 0;
-
-            elScore.innerText = `POÄNG: ${score.toFixed(1)}`;
-            elDiag.innerText = feedback.text;
-            document.getElementById('streakStat').innerText = `Streak: ${streak}`;
-            document.getElementById('avgStat').innerText = `Snitt: ${(totalScore / shotHistory.length).toFixed(1)}`;
-            
-            coachSay(`${score.toFixed(0)} poäng. ${feedback.voice}`);
-
-            btnShoot.style.display = 'none'; btnStart.style.display = 'block';
-            btnStart.innerText = "LADDA OM (NÄSTA SKOTT)";
-            if (triggerMode === 'mag' || triggerMode === 'mic') elStatus.innerText = "System pausat. Ladda om.";
-        }
-
-        btnShoot.onclick = triggerFire;
-
-        btnStart.onclick = async () => {
-            if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
-            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                try { await DeviceOrientationEvent.requestPermission(); } catch(e) {}
-            }
-            if (triggerMode === 'mic') await startMic();
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-
-            isAiming = true; startA = null; initialMag = null; trace = [];
-            
-            if (triggerMode === 'screen') {
-                elDiag.innerText = "SIKTAR... Tryck på AVFYRA när du är redo!";
-            } else {
-                elDiag.innerText = "SIKTAR... Använd din fysiska avtryckare!";
-                btnShoot.innerText = "NÖD-AVFYRNING (SKÄRM)"; 
-            }
-            btnStart.style.display = 'none'; btnShoot.style.display = 'block';
-            renderLoop();
-        };
-
-        // --- RITA (BÅDE FRONT OCH SIDE) ---
-        function drawFront() {
-            ctxF.clearRect(0,0,600,600);
-            for(let i=5; i>0; i--) {
-                ctxF.beginPath(); ctxF.arc(300,300, i*55, 0, 7);
-                ctxF.fillStyle = i%2===0 ? '#050505' : '#8b0000'; ctxF.fill();
-                ctxF.strokeStyle = '#222'; ctxF.stroke();
-            }
-            shotHistory.forEach(s => { 
-                ctxF.fillStyle='rgba(0, 255, 255, 0.3)'; ctxF.beginPath(); ctxF.arc(s.x,s.y,8,0,7); ctxF.fill(); 
-            });
-            if (trace.length > 1) {
-                ctxF.lineWidth = 5;
-                for(let i=1; i<trace.length; i++) {
-                    ctxF.strokeStyle = (Date.now()-trace[i].time < 500 && !isAiming) ? '#FFD700' : '#00ff00';
-                    ctxF.beginPath(); ctxF.moveTo(trace[i-1].x, trace[i-1].y); ctxF.lineTo(trace[i].x, trace[i].y); ctxF.stroke();
-                }
-            }
-            const last = isAiming ? {x:rawX, y:rawY} : trace[trace.length-1];
-            if(last) {
-                ctxF.fillStyle = isAiming ? '#fff' : '#00FFFF';
-                ctxF.beginPath(); ctxF.arc(last.x, last.y, 11, 0, 7); ctxF.fill();
+        function fireCommand() {
+            if(conn) {
+                conn.send({ type: 'fire' }); // Säg till datorn att det small
+                lastFire = Date.now();
+                if(navigator.vibrate) navigator.vibrate(80); // Fysisk rekyl i handen
             }
         }
-
-        function drawSide() {
-            ctxS.clearRect(0, 0, 600, 300);
-            const cY = 150; 
-            
-            ctxS.lineWidth = 4; ctxS.strokeStyle = '#8b0000';
-            ctxS.beginPath(); ctxS.moveTo(0, cY); ctxS.lineTo(600, cY); ctxS.stroke();
-            ctxS.strokeStyle = '#333';
-            ctxS.beginPath(); ctxS.moveTo(0, cY - 75); ctxS.lineTo(600, cY - 75); ctxS.stroke();
-            ctxS.beginPath(); ctxS.moveTo(0, cY + 75); ctxS.lineTo(600, cY + 75); ctxS.stroke();
-
-            if (trace.length < 2) return;
-            const refTime = isAiming ? Date.now() : trace[trace.length - 1].time;
-            
-            ctxS.lineWidth = 4;
-            for (let i = 1; i < trace.length; i++) {
-                const p1 = trace[i-1], p2 = trace[i];
-                if (refTime - p2.time > TIME_WINDOW) continue;
-                
-                const x1 = 600 - ((refTime - p1.time) / TIME_WINDOW) * 600;
-                const x2 = 600 - ((refTime - p2.time) / TIME_WINDOW) * 600;
-                const y1 = cY + (p1.y - 300);
-                const y2 = cY + (p2.y - 300);
-                
-                ctxS.beginPath(); ctxS.moveTo(x1, y1); ctxS.lineTo(x2, y2);
-                ctxS.strokeStyle = (Date.now() - p2.time < 500 && !isAiming) ? '#FFD700' : '#00ff00';
-                ctxS.stroke();
-            }
-            
-            if (!isAiming) {
-                const hit = trace[trace.length - 1];
-                if (hit) {
-                    const hitY = cY + (hit.y - 300);
-                    ctxS.fillStyle = '#00FFFF';
-                    ctxS.beginPath(); ctxS.arc(600, hitY, 8, 0, 7); ctxS.fill();
-                }
-            }
-        }
-
-        function renderLoop() {
-            drawFront();
-            drawSide();
-            if (isAiming) requestAnimationFrame(renderLoop);
-        }
-        
-        // Initial render
-        drawFront(); drawSide();
     </script>
 </body>
 </html>
