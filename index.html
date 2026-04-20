@@ -3,70 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, viewport-fit=cover">
-    <title>Mantis-Klonen v1.5.0</title>
+    <title>Mantis-Klonen Ultimate (Smart Diagnostik)</title>
     <style>
         * { box-sizing: border-box; }
         body {
-            margin: 0; padding: 0; background-color: #050505; color: #ffffff;
-            font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: row; 
-            height: 100dvh; width: 100vw; overflow: hidden;
+            margin: 0; padding: 0; background-color: #0a0a0a; color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            display: flex; flex-direction: row; height: 100dvh; width: 100vw; 
+            overflow: hidden; user-select: none; -webkit-user-select: none; overscroll-behavior: none;
         }
 
         #visuals-panel { 
-            flex: 1.3; display: flex; flex-direction: column; align-items: center; 
-            justify-content: space-evenly; padding: 10px; background-color: #111;
-            border-right: 2px solid #333; position: relative;
+            flex: 1.2; display: flex; flex-direction: column; align-items: center; 
+            justify-content: space-evenly; padding: 10px; background-color: #121212;
+            border-right: 2px solid #333; max-width: 60vw; 
         }
 
-        .view-container { display: flex; flex-direction: column; align-items: center; width: 100%; height: 48%; }
+        .view-container { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 48%; }
+        .view-title { font-size: clamp(10px, 1.5vh, 14px); color: #888; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+
         canvas { 
-            background-color: #1a1a1a; border-radius: 8px; border: 1px solid #333;
-            max-width: 100%; max-height: 85%; object-fit: contain; 
+            background-color: #1e1e1e; border-radius: 12px; box-shadow: inset 0 0 10px rgba(0,0,0,0.8), 0 4px 8px rgba(0,0,0,0.5);
+            max-width: 100%; max-height: calc(100% - 20px); object-fit: contain; 
         }
 
         #controls-panel { 
-            flex: 1; display: flex; flex-direction: column; padding: 20px; 
-            background-color: #050505; justify-content: center;
+            flex: 1; display: flex; flex-direction: column; padding: 15px; 
+            background-color: #0a0a0a; justify-content: center; align-items: stretch;
         }
 
-        #scoreBoard { font-size: 32px; font-weight: bold; text-align: center; color: #00FFFF; margin-bottom: 5px; }
+        .controls { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; flex-shrink: 0;}
+        
+        button { 
+            background-color: #4CAF50; color: white; border: none; 
+            padding: clamp(10px, 2vh, 20px); font-size: clamp(14px, 2vh, 18px); 
+            border-radius: 8px; font-weight: bold; cursor: pointer; touch-action: manipulation; transition: 0.1s;
+        }
+        button:active { transform: scale(0.97); }
+
+        #standbyBtn { background-color: #FF9800; display: none; color: black; }
+        #shootBtn { 
+            background-color: #f44336; display: none; flex-grow: 1; font-size: clamp(24px, 4vh, 40px); 
+            border-radius: 15px; border: 4px solid #b71c1c; box-shadow: 0 8px 15px rgba(244, 67, 54, 0.4); margin-top: 10px;
+        }
+        #shootBtn:active { background-color: #da190b; box-shadow: none; transform: translateY(4px); }
+        #shootBtn:disabled { background-color: #555; border-color: #333; box-shadow: none; color: #888; transform: none; }
+
+        .btn-secondary { background-color: #333; font-size: clamp(12px, 1.5vh, 14px); }
+
+        #scoreBoard { font-size: clamp(20px, 3.5vh, 32px); font-weight: bold; text-align: center; color: #00FFFF; text-shadow: 0 0 10px rgba(0, 255, 255, 0.3); margin-bottom: 5px; }
         
         #diagBoard { 
-            background: rgba(255, 215, 0, 0.05);
-            border: 1px solid #ffd700;
-            padding: 15px;
-            border-radius: 10px;
-            font-size: 17px;
-            line-height: 1.4;
-            text-align: center;
-            color: #ffd700;
-            margin-bottom: 20px;
-            min-height: 110px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: inset 0 0 10px rgba(255,215,0,0.1);
+            font-size: clamp(12px, 2vh, 16px); text-align: center; color: #FFD700; 
+            margin-bottom: 15px; min-height: 6vh; display: flex; align-items: center; justify-content: center;
         }
 
-        button { 
-            background-color: #2e7d32; color: white; border: none; 
-            padding: 18px; font-size: 17px; border-radius: 10px; font-weight: bold;
-            cursor: pointer; margin-bottom: 8px; transition: background 0.2s;
-        }
-        button:active { background-color: #1b5e20; }
+        .legend { font-size: clamp(10px, 1.2vh, 12px); color: #888; display: flex; gap: 10px; margin-top: 5px; justify-content: center; }
+        .legend span { display: flex; align-items: center; gap: 4px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 
-        #shootBtn { 
-            background-color: #c62828; display: none; flex-grow: 1; 
-            font-size: 36px; border-radius: 20px; border-bottom: 5px solid #5d1111;
-            margin-top: 5px;
-        }
-        #shootBtn:active { transform: translateY(3px); border-bottom: 2px solid #5d1111; }
-
-        .legend { font-size: 11px; color: #666; display: flex; gap: 8px; margin-top: 5px; }
-        .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-        
-        #version-tag {
-            position: absolute; bottom: 5px; left: 10px; font-size: 10px; color: #444;
+        @media (orientation: portrait) {
+            body::before {
+                content: "Rotera till liggande läge!"; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                background: #b71c1c; color: white; display: flex; align-items: center; justify-content: center; 
+                font-size: 24px; font-weight: bold; text-align: center; z-index: 9999; padding: 20px;
+            }
         }
     </style>
 </head>
@@ -74,159 +75,303 @@
 
     <div id="visuals-panel">
         <div class="view-container">
+            <div class="view-title">Måltavla & Gruppering</div>
             <canvas id="frontCanvas" width="600" height="600"></canvas>
         </div>
         <div class="view-container">
+            <div class="view-title">Profil & Avfyrningsanalys</div>
             <canvas id="sideCanvas" width="600" height="300"></canvas>
             <div class="legend">
-                <span><div class="dot" style="background:#00FF00;"></div> Sikte</span>
-                <span><div class="dot" style="background:#FFD700;"></div> Avfyrning</span>
-                <span><div class="dot" style="background:#555;"></div> Grupp</span>
+                <span><div class="dot" style="background:#00FF00;"></div> Hold</span>
+                <span><div class="dot" style="background:#FFD700;"></div> Trigger</span>
+                <span><div class="dot" style="background:#00FFFF;"></div> Träff</span>
+                <span><div class="dot" style="background:#555;"></div> Historik</span>
             </div>
         </div>
-        <div id="version-tag">Build v1.5.0-smart-diag</div>
     </div>
 
     <div id="controls-panel">
-        <div id="scoreBoard">VÄNTAR</div>
-        <div id="diagBoard">Håll vapnet stilla och klicka på Start för att kalibrera sensorerna.</div>
-        
-        <button id="startBtn">KALIBRERA & STARTA</button>
+        <div id="scoreBoard">REDO</div>
+        <div id="diagBoard">Starta för att börja</div>
+        <div class="controls">
+            <button id="startBtn">Kalibrera & Starta</button>
+            <button id="standbyBtn">STANDBY (Par Timer)</button>
+            <button id="swapAxisBtn" class="btn-secondary">Byt Sensor-axlar</button>
+        </div>
         <button id="shootBtn">AVFYRA</button>
-        <button id="swapBtn" style="background:#333; font-size: 13px;">BYT AXEL (Liggande/Stående)</button>
     </div>
 
     <script>
-        const cFront = document.getElementById('frontCanvas'), ctxF = cFront.getContext('2d');
-        const cSide = document.getElementById('sideCanvas'), ctxS = cSide.getContext('2d');
-        const btnStart = document.getElementById('startBtn'), btnShoot = document.getElementById('shootBtn');
-        const elScore = document.getElementById('scoreBoard'), elDiag = document.getElementById('diagBoard');
+        function requestFullscreen() {
+            const docEl = document.documentElement;
+            if (docEl.requestFullscreen) docEl.requestFullscreen().catch(()=>{});
+            if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(()=>{});
+        }
 
-        let isAiming = false, trace = [], shotHistory = [], audioCtx = null;
-        let startA = null, startB = null, startG = null, swap = false;
-        let rawX = 300, rawY = 300;
-
-        function bang() {
-            if (!audioCtx) audioCtx = new (AudioContext || webkitAudioContext)();
+        let audioCtx = null;
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
-            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(160, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(20, audioCtx.currentTime + 0.1);
-            gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
-            gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
+        }
+        function playShot() {
+            if (!audioCtx) return;
+            const bufferSize = audioCtx.sampleRate * 0.5;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+            const noise = audioCtx.createBufferSource(); noise.buffer = buffer;
+            const filter = audioCtx.createBiquadFilter(); filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(1200, audioCtx.currentTime);
+            filter.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+            noise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+            noise.start(); noise.stop(audioCtx.currentTime + 0.2);
+        }
+        function playBeep() {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine'; osc.frequency.setValueAtTime(1000, audioCtx.currentTime);
+            gain.gain.setValueAtTime(1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
             osc.connect(gain); gain.connect(audioCtx.destination);
             osc.start(); osc.stop(audioCtx.currentTime + 0.2);
         }
 
-        function getFeedback() {
-            if (trace.length < 10) return "Analys misslyckades: För kort sikt-tid.";
+        const cFront = document.getElementById('frontCanvas'), ctxF = cFront.getContext('2d');
+        const cSide = document.getElementById('sideCanvas'), ctxS = cSide.getContext('2d');
+        const btnStart = document.getElementById('startBtn'), btnShoot = document.getElementById('shootBtn');
+        const btnStandby = document.getElementById('standbyBtn'), btnSwap = document.getElementById('swapAxisBtn');
+        const elScore = document.getElementById('scoreBoard'), elDiag = document.getElementById('diagBoard');
+
+        let isAiming = false, trace = [], shotHistory = [];
+        let startAlpha = null, startBeta = null, startGamma = null;
+        let swapAxes = false;
+        
+        let rawX = cFront.width / 2, rawY = cFront.height / 2; 
+        let currentX = rawX, currentY = rawY; 
+        
+        let beepTime = 0, standbyTimer = null;
+        const sens = cFront.width / 20, TIME_WINDOW = 3000;
+
+        function drawTargetFront() {
+            ctxF.clearRect(0, 0, cFront.width, cFront.height);
+            const cX = cFront.width / 2, cY = cFront.height / 2;
             
-            const hit = trace[trace.length - 1];
-            const startTrigger = trace[Math.max(0, trace.length - 15)]; 
+            for (let i = 5; i > 0; i--) {
+                ctxF.beginPath(); ctxF.arc(cX, cY, i * (cFront.width/12), 0, 2 * Math.PI);
+                ctxF.fillStyle = i % 2 === 0 ? '#111' : '#bb2222';
+                ctxF.fill(); ctxF.lineWidth = 2; ctxF.strokeStyle = '#000'; ctxF.stroke();
+            }
+
+            ctxF.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            shotHistory.forEach(shot => {
+                ctxF.beginPath(); ctxF.arc(shot.x, shot.y, 8, 0, 2 * Math.PI); ctxF.fill();
+            });
+
+            if (trace.length < 2) return;
+            const now = isAiming ? Date.now() : trace[trace.length - 1].time;
+            ctxF.lineWidth = 5;
+            for (let i = 1; i < trace.length; i++) {
+                const p1 = trace[i-1], p2 = trace[i];
+                ctxF.beginPath(); ctxF.moveTo(p1.x, p1.y); ctxF.lineTo(p2.x, p2.y);
+                ctxF.strokeStyle = (now - p2.time < 500 && !isAiming) ? '#FFD700' : '#00FF00';
+                ctxF.stroke();
+            }
+
+            ctxF.beginPath(); 
+            ctxF.arc(isAiming ? currentX : trace[trace.length-1].x, isAiming ? currentY : trace[trace.length-1].y, 10, 0, 2 * Math.PI);
+            ctxF.fillStyle = isAiming ? 'white' : '#00FFFF'; ctxF.fill();
+        }
+
+        function drawTargetSide() {
+            ctxS.clearRect(0, 0, cSide.width, cSide.height);
+            const cY = cSide.height / 2, gap = cSide.height / 4;
             
-            const dX = hit.x - startTrigger.x;
-            const dY = hit.y - startTrigger.y;
-            const offX = hit.x - 300;
-            const offY = hit.y - 300;
+            ctxS.lineWidth = 4; ctxS.strokeStyle = '#bb2222';
+            ctxS.beginPath(); ctxS.moveTo(0, cY); ctxS.lineTo(cSide.width, cY); ctxS.stroke();
+            ctxS.strokeStyle = '#333';
+            ctxS.beginPath(); ctxS.moveTo(0, cY - gap); ctxS.lineTo(cSide.width, cY - gap); ctxS.stroke();
+            ctxS.beginPath(); ctxS.moveTo(0, cY + gap); ctxS.lineTo(cSide.width, cY + gap); ctxS.stroke();
 
-            let cause = [], result = [];
-
-            // Analysera rörelse (Orsak)
-            if (dY > 25) cause.push("dippade pipan");
-            else if (dY < -25) cause.push("lyfte pipan");
-            if (dX > 25) cause.push("drog åt höger");
-            else if (dX < -25) cause.push("ryckte avtryckaren");
-
-            // Analysera träffläge (Resultat)
-            if (offY > 40) result.push("lågt");
-            else if (offY < -40) result.push("högt");
-            if (offX > 40) result.push("till vänster");
-            else if (offX < -40) result.push("till höger");
-
-            if (cause.length === 0 && result.length === 0) return "✅ Perfekt avfyrning, skottet satt mitt i prick!";
+            if (trace.length < 2) return;
+            const refTime = isAiming ? Date.now() : trace[trace.length - 1].time;
+            ctxS.lineWidth = 5;
             
-            const causeStr = cause.length > 0 
-                ? cause.join(" och ").charAt(0).toUpperCase() + cause.join(" och ").slice(1) 
+            for (let i = 1; i < trace.length; i++) {
+                const p1 = trace[i-1], p2 = trace[i];
+                if (refTime - p2.time > TIME_WINDOW) continue; 
+                const x1 = cSide.width - ((refTime - p1.time) / TIME_WINDOW) * cSide.width;
+                const x2 = cSide.width - ((refTime - p2.time) / TIME_WINDOW) * cSide.width;
+                const y1 = cY + (p1.y - cFront.height / 2);
+                const y2 = cY + (p2.y - cFront.height / 2);
+                ctxS.beginPath(); ctxS.moveTo(x1, y1); ctxS.lineTo(x2, y2);
+                ctxS.strokeStyle = (refTime - p2.time < 500 && !isAiming) ? '#FFD700' : '#00FF00';
+                ctxS.stroke();
+            }
+        }
+
+        function updateScreen() {
+            const swayX = Math.sin(Date.now() / 1500) * (cFront.width * 0.03);
+            const swayY = Math.sin(Date.now() / 1200) * (cFront.height * 0.03);
+            currentX = rawX + swayX; 
+            currentY = rawY + swayY;
+
+            drawTargetFront(); drawTargetSide();
+            
+            if (isAiming) {
+                trace.push({ x: currentX, y: currentY, time: Date.now() });
+                if (trace.length > 200) trace.shift(); 
+                requestAnimationFrame(updateScreen);
+            }
+        }
+
+        function handleOrientation(e) {
+            if (!isAiming) return;
+            let a = e.alpha, b = e.beta, g = e.gamma;
+            if (startAlpha === null) { startAlpha = a; startBeta = b; startGamma = g; }
+            let dAlpha = a - startAlpha;
+            if (dAlpha > 180) dAlpha -= 360; if (dAlpha < -180) dAlpha += 360;
+            
+            let dX = swapAxes ? g - startGamma : dAlpha;
+            let dY = swapAxes ? a - startAlpha : b - startBeta;
+            
+            rawX = (cFront.width / 2) + (dX * sens);
+            rawY = (cFront.height / 2) - (dY * sens);
+            rawX = Math.max(0, Math.min(cFront.width, rawX));
+            rawY = Math.max(0, Math.min(cFront.height, rawY));
+        }
+
+        // --- SMART DIAGNOSTIK (RÖRELSE + TRÄFF) ---
+        function analyzeShot() {
+            if (trace.length < 10) return "För kort sikt-tid för att analysera.";
+            
+            const hitTime = trace[trace.length-1].time;
+            const triggerPoints = trace.filter(p => hitTime - p.time < 500); 
+            
+            if(triggerPoints.length < 5) return "✅ Mycket bra och stadig avfyrning!";
+
+            const startTrigger = triggerPoints[0];
+            const endTrigger = triggerPoints[triggerPoints.length-1]; 
+            
+            // 1. Rörelse
+            const diffX = endTrigger.x - startTrigger.x;
+            const diffY = endTrigger.y - startTrigger.y;
+            
+            // 2. Träffpunkt från mitten
+            const cX = cFront.width / 2;
+            const cY = cFront.height / 2;
+            const offsetX = endTrigger.x - cX;
+            const offsetY = endTrigger.y - cY;
+            
+            const moveThresholdX = cFront.width * 0.05; 
+            const moveThresholdY = cFront.height * 0.05;
+            const hitThreshold = cFront.width * 0.08; 
+
+            let movementFeedback = [];
+            let hitFeedback = [];
+
+            if (diffY > moveThresholdY) movementFeedback.push("dippade pipan");
+            else if (diffY < -moveThresholdY) movementFeedback.push("lyfte pipan");
+
+            if (diffX > moveThresholdX) movementFeedback.push("drog till höger");
+            else if (diffX < -moveThresholdX) movementFeedback.push("ryckte avtryckaren");
+
+            if (offsetY > hitThreshold) hitFeedback.push("lågt");
+            else if (offsetY < -hitThreshold) hitFeedback.push("högt");
+
+            if (offsetX > hitThreshold) hitFeedback.push("till höger");
+            else if (offsetX < -hitThreshold) hitFeedback.push("till vänster");
+
+            if (movementFeedback.length === 0 && hitFeedback.length === 0) {
+                return "✅ Perfekt avfyrning, skottet satt mitt i prick!";
+            }
+
+            let whyText = movementFeedback.length > 0 
+                ? "Dippade " + movementFeedback.join(" och ").replace("Dippade dippade", "dippade") 
                 : "Ostödigt sikte";
-            const resultStr = result.length > 0 
-                ? "skottet gick " + result.join(" och ") 
-                : "men träffen blev ändå bra";
-
-            return `⚠️ ANALYS: ${causeStr}, ${resultStr}.`;
-        }
-
-        function draw() {
-            ctxF.clearRect(0,0,600,600); ctxS.clearRect(0,0,600,300);
             
-            // Måltavla
-            for(let i=5; i>0; i--) {
-                ctxF.beginPath(); ctxF.arc(300,300, i*55, 0, 7);
-                ctxF.fillStyle = i%2===0 ? '#0a0a0a' : '#b71c1c'; ctxF.fill();
-                ctxF.strokeStyle = '#222'; ctxF.stroke();
+            if (movementFeedback.length > 0) {
+                 whyText = movementFeedback[0].charAt(0).toUpperCase() + movementFeedback[0].slice(1);
+                 if (movementFeedback.length > 1) whyText += " och " + movementFeedback[1];
             }
 
-            // Historik
-            shotHistory.forEach(s => { ctxF.fillStyle='rgba(100,100,100,0.6)'; ctxF.beginPath(); ctxF.arc(s.x,s.y,8,0,7); ctxF.fill(); });
+            let whereText = hitFeedback.length > 0 
+                ? "skottet gick " + hitFeedback.join(" och ") 
+                : "men träffen blev ändå okej";
 
-            if (trace.length > 1) {
-                ctxF.lineWidth = 5;
-                for(let i=1; i<trace.length; i++) {
-                    ctxF.strokeStyle = (Date.now()-trace[i].time < 500 && !isAiming) ? '#FFD700' : '#4CAF50';
-                    ctxF.beginPath(); ctxF.moveTo(trace[i-1].x, trace[i-1].y); ctxF.lineTo(trace[i].x, trace[i].y); ctxF.stroke();
-                }
-            }
-
-            const last = isAiming ? {x:rawX, y:rawY} : trace[trace.length-1];
-            if(last) {
-                ctxF.fillStyle = isAiming ? '#fff' : '#00FFFF';
-                ctxF.beginPath(); ctxF.arc(last.x, last.y, 11, 0, 7); ctxF.fill();
-                ctxF.strokeStyle = '#000'; ctxF.stroke();
-            }
-
-            if (isAiming) requestAnimationFrame(draw);
+            return `⚠️ Analys: ${whyText}, ${whereText}.`;
         }
 
-        window.addEventListener('deviceorientation', e => {
-            if(!isAiming) return;
-            if(startA === null) { startA=e.alpha; startB=e.beta; startG=e.gamma; }
-            let dx = swap ? e.gamma-startG : e.alpha-startA;
-            if (dx > 180) dx -= 360; if (dx < -180) dx += 360;
-            let dy = swap ? e.alpha-startA : e.beta-startB;
-            rawX = 300 + (dx * 18); rawY = 300 - (dy * 18);
-            trace.push({x:rawX, y:rawY, time:Date.now()});
-            if(trace.length > 200) trace.shift();
+        btnStart.addEventListener('click', async () => {
+            requestFullscreen(); initAudio();
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                try {
+                    if (await DeviceOrientationEvent.requestPermission() !== 'granted') return alert('Behöver sensor!');
+                } catch(e) {}
+            }
+            startMode();
         });
 
-        btnStart.onclick = async () => {
-            if (window.DeviceOrientationEvent?.requestPermission) await DeviceOrientationEvent.requestPermission();
-            if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
-            isAiming = true; startA = null; trace = [];
-            elDiag.innerText = "SIKTAR... Tryck när du är redo!";
-            elScore.innerText = "---";
-            btnStart.style.display = 'none'; btnShoot.style.display = 'block';
-            draw();
-        };
+        btnStandby.addEventListener('click', () => {
+            initAudio();
+            btnStandby.style.display = 'none'; btnStart.style.display = 'none'; btnSwap.style.display = 'none';
+            btnShoot.style.display = 'block'; btnShoot.innerText = 'VÄNTA...'; btnShoot.disabled = true;
+            elScore.innerText = "STANDBY"; elDiag.innerText = "Gör dig redo...";
+            
+            const delay = 2000 + Math.random() * 3000;
+            standbyTimer = setTimeout(() => {
+                playBeep();
+                beepTime = Date.now();
+                btnShoot.innerText = 'AVFYRA!';
+                btnShoot.disabled = false;
+                startMode(true); 
+            }, delay);
+        });
 
-        btnShoot.onclick = () => {
-            isAiming = false;
-            bang();
-            if(navigator.vibrate) navigator.vibrate(80);
+        btnSwap.addEventListener('click', () => { swapAxes = !swapAxes; alert(swapAxes ? "Sidoläge" : "Upprätt"); });
 
-            const feedback = getFeedback();
-            const hit = trace[trace.length-1];
-            const dist = Math.sqrt(Math.pow(hit.x-300,2) + Math.pow(hit.y-300,2));
-            const score = Math.max(0, 100 - (dist/3.2)).toFixed(1);
+        function startMode(fromStandby = false) {
+            startAlpha = null; trace = []; isAiming = true;
+            if(!fromStandby) {
+                elScore.innerText = "SIKTAR..."; elDiag.innerText = "Fokusera på kornet...";
+                btnStart.style.display = 'none'; btnStandby.style.display = 'none'; btnSwap.style.display = 'none';
+                btnShoot.style.display = 'block'; btnShoot.innerText = 'AVFYRA'; btnShoot.disabled = false;
+            }
+            window.addEventListener('deviceorientation', handleOrientation);
+            updateScreen();
+        }
 
-            elScore.innerText = `POÄNG: ${score}`;
-            elDiag.innerText = feedback;
-            shotHistory.push(hit);
+        btnShoot.addEventListener('click', () => {
+            if(btnShoot.disabled) return;
+            if ("vibrate" in navigator) navigator.vibrate(80); 
+            playShot(); 
+            isAiming = false; window.removeEventListener('deviceorientation', handleOrientation);
+            
+            const hit = trace[trace.length - 1];
+            if(hit) {
+                shotHistory.push({x: hit.x, y: hit.y});
+                const dist = Math.sqrt(Math.pow(hit.x - cFront.width/2, 2) + Math.pow(hit.y - cFront.height/2, 2));
+                elScore.innerText = `POÄNG: ${Math.max(0, 100 - (dist/(cFront.width/2))*100).toFixed(1)}`;
+                
+                let diag = analyzeShot(); // Kör analysmotorn
+                if (beepTime > 0) { 
+                    const reaction = ((Date.now() - beepTime) / 1000).toFixed(2);
+                    diag = `Reaktion: ${reaction} sek | ${diag}`;
+                    beepTime = 0; 
+                }
+                elDiag.innerText = diag;
+            }
 
+            btnStart.style.display = 'block'; btnStart.innerText = 'Ladda om';
+            btnStandby.style.display = 'block'; btnSwap.style.display = 'block'; 
             btnShoot.style.display = 'none';
-            btnStart.style.display = 'block';
-            btnStart.innerText = "LADDA OM (NÄSTA SKOTT)";
-        };
+            drawTargetFront(); drawTargetSide(); 
+        });
 
-        document.getElementById('swapBtn').onclick = () => { swap = !swap; alert("Axlarna är nu växlade!"); };
+        drawTargetFront(); drawTargetSide();
     </script>
 </body>
 </html>
