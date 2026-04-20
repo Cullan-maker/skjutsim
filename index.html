@@ -2,72 +2,97 @@
 <html lang="sv">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-    <title>Mantis-Klonen Pro (Med Vibration)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, viewport-fit=cover">
+    <title>Mantis-Klonen Ultimate</title>
     <style>
+        * { box-sizing: border-box; }
+        
         body {
             margin: 0; padding: 0; background-color: #121212; color: #ffffff;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             display: flex; flex-direction: row; 
-            height: 100vh; width: 100vw; overflow: hidden;
+            height: 100dvh; /* 100dvh hanterar mobila webbläsares menyer bättre än vh */
+            width: 100vw; overflow: hidden;
             user-select: none; -webkit-user-select: none;
+            overscroll-behavior: none; /* Förhindrar pull-to-refresh */
         }
 
+        /* Vänstra panelen (Visualisering) */
         #visuals-panel { 
-            flex: 1.5; 
+            flex: 1.2; /* Tar upp ca 55% av skärmen */
             display: flex; flex-direction: column; 
             align-items: center; justify-content: space-evenly; 
             padding: 10px; background-color: #1a1a1a;
             border-right: 2px solid #333;
+            max-width: 60vw; 
         }
 
         .view-container {
-            display: flex; flex-direction: column; align-items: center; width: 100%;
+            display: flex; flex-direction: column; align-items: center; 
+            justify-content: center; width: 100%; height: 48%; /* Tar upp hälften var */
         }
 
         .view-title {
-            font-size: 14px; color: #aaa; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px;
+            font-size: clamp(10px, 1.5vh, 14px); color: #aaa; margin-bottom: 5px; 
+            text-transform: uppercase; letter-spacing: 1px; flex-shrink: 0;
         }
 
         canvas { 
             background-color: #252525; border-radius: 12px; 
             box-shadow: inset 0 0 10px rgba(0,0,0,0.5), 0 4px 8px rgba(0,0,0,0.3);
-            max-width: 95%; max-height: 40vh; 
+            /* Dessa gör att canvasen skalar ner automatiskt utan att tappa proportioner */
+            max-width: 100%; max-height: calc(100% - 20px);
+            object-fit: contain; 
         }
 
+        /* Högra panelen (Kontroller) */
         #controls-panel { 
             flex: 1; display: flex; flex-direction: column; padding: 15px; 
-            background-color: #121212; justify-content: center;
+            background-color: #121212; justify-content: center; align-items: stretch;
         }
 
-        .controls { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
+        .controls { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; flex-shrink: 0;}
         
         button { 
             background-color: #4CAF50; color: white; border: none; 
-            padding: 15px; font-size: 16px; border-radius: 8px; font-weight: bold;
+            padding: clamp(10px, 2vh, 20px); font-size: clamp(14px, 2vh, 18px); 
+            border-radius: 8px; font-weight: bold;
             cursor: pointer; touch-action: manipulation; transition: 0.1s;
         }
         button:active { transform: scale(0.97); }
 
         #shootBtn { 
             background-color: #f44336; display: none; flex-grow: 1; 
-            font-size: 36px; border-radius: 15px; border: 4px solid #b71c1c;
-            box-shadow: 0 8px 15px rgba(244, 67, 54, 0.4);
+            font-size: clamp(24px, 4vh, 40px); border-radius: 15px; border: 4px solid #b71c1c;
+            box-shadow: 0 8px 15px rgba(244, 67, 54, 0.4); margin-top: 10px;
         }
         #shootBtn:active { background-color: #da190b; box-shadow: none; transform: translateY(4px); }
 
-        .btn-secondary { background-color: #444; font-size: 14px; padding: 12px; }
+        .btn-secondary { background-color: #444; font-size: clamp(12px, 1.5vh, 14px); }
 
         #scoreBoard { 
-            font-size: 28px; font-weight: bold; text-align: center; 
-            margin-bottom: 20px; color: #00FFFF; text-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+            font-size: clamp(20px, 3.5vh, 32px); font-weight: bold; text-align: center; 
+            margin-bottom: 15px; color: #00FFFF; text-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+            flex-shrink: 0;
         }
 
         .legend {
-            font-size: 12px; color: #888; display: flex; gap: 10px; margin-top: 5px; justify-content: center;
+            font-size: clamp(10px, 1.2vh, 12px); color: #888; display: flex; gap: 10px; 
+            margin-top: 5px; justify-content: center; flex-shrink: 0;
         }
         .legend span { display: flex; align-items: center; gap: 4px; }
         .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+        /* Varning om man håller telefonen stående */
+        @media (orientation: portrait) {
+            body::before {
+                content: "Vänligen rotera telefonen till liggande läge!";
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                background: #b71c1c; color: white; display: flex; align-items: center; 
+                justify-content: center; font-size: 24px; font-weight: bold; text-align: center;
+                z-index: 9999; padding: 20px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -75,11 +100,11 @@
     <div id="visuals-panel">
         <div class="view-container">
             <div class="view-title">Framsida - Måltavla</div>
-            <canvas id="frontCanvas" width="300" height="300"></canvas>
+            <canvas id="frontCanvas" width="600" height="600"></canvas>
         </div>
         <div class="view-container">
             <div class="view-title">Sidan - Höjdled över tid</div>
-            <canvas id="sideCanvas" width="300" height="150"></canvas>
+            <canvas id="sideCanvas" width="600" height="300"></canvas>
             <div class="legend">
                 <span><div class="dot" style="background:#00FF00;"></div> Sikte</span>
                 <span><div class="dot" style="background:#FFD700;"></div> Avfyrning</span>
@@ -91,13 +116,28 @@
     <div id="controls-panel">
         <div id="scoreBoard">REDO</div>
         <div class="controls">
-            <button id="startBtn">Kalibrera & Aktivera Ljud</button>
+            <button id="startBtn">Kalibrera & Starta (Helskärm)</button>
             <button id="swapAxisBtn" class="btn-secondary">Rör det sig fel? Byt axlar</button>
         </div>
         <button id="shootBtn">AVFYRA</button>
     </div>
 
     <script>
+        // --- HELSKÄRM & LÅSNING AV ROTATION ---
+        function requestFullscreen() {
+            const doc = window.document;
+            const docEl = doc.documentElement;
+            const requestFS = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullScreen || docEl.msRequestFullscreen;
+            if (requestFS && !doc.fullscreenElement) {
+                requestFS.call(docEl).catch(err => { console.log(`Kunde inte aktivera helskärm: ${err.message}`); });
+            }
+            // Försök låsa skärmen i landskapsläge (fungerar främst på Android)
+            if (screen.orientation && screen.orientation.lock) {
+                screen.orientation.lock('landscape').catch(e => console.log("Låsning av skärmorientering stöds inte."));
+            }
+        }
+
+        // --- LJUD SYNTES ---
         let audioCtx = null;
         function playSyntheticShot() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -133,20 +173,24 @@
         let startAlpha = null, startBeta = null, startGamma = null;
         let currentX = canvasFront.width / 2, currentY = canvasFront.height / 2;
         let swapAxes = false; 
-        const sensitivity = 10; 
+        
+        // Känsligheten är nu dynamisk baserat på upplösningen
+        const sensitivity = canvasFront.width / 20; 
         const TIME_WINDOW = 3000; 
 
         function drawFront() {
             ctxFront.clearRect(0, 0, canvasFront.width, canvasFront.height);
             const cX = canvasFront.width / 2, cY = canvasFront.height / 2;
+            
+            // Justera storleken på ringarna efter den nya upplösningen
             for (let i = 5; i > 0; i--) {
-                ctxFront.beginPath(); ctxFront.arc(cX, cY, i * 25, 0, 2 * Math.PI);
+                ctxFront.beginPath(); ctxFront.arc(cX, cY, i * (canvasFront.width/12), 0, 2 * Math.PI);
                 ctxFront.fillStyle = i % 2 === 0 ? '#eeeeee' : '#dd3333';
-                ctxFront.fill(); ctxFront.lineWidth = 2; ctxFront.strokeStyle = '#222'; ctxFront.stroke();
+                ctxFront.fill(); ctxFront.lineWidth = 4; ctxFront.strokeStyle = '#222'; ctxFront.stroke();
             }
             if (trace.length < 2) return;
             const now = isAiming ? Date.now() : trace[trace.length - 1].time;
-            ctxFront.lineWidth = 3;
+            ctxFront.lineWidth = 6;
             for (let i = 1; i < trace.length; i++) {
                 const p1 = trace[i-1], p2 = trace[i];
                 ctxFront.beginPath(); ctxFront.moveTo(p1.x, p1.y); ctxFront.lineTo(p2.x, p2.y);
@@ -155,10 +199,10 @@
             }
             if (!isAiming) {
                 const lastPoint = trace[trace.length - 1];
-                ctxFront.beginPath(); ctxFront.arc(lastPoint.x, lastPoint.y, 6, 0, 2 * Math.PI);
+                ctxFront.beginPath(); ctxFront.arc(lastPoint.x, lastPoint.y, 12, 0, 2 * Math.PI);
                 ctxFront.fillStyle = '#00FFFF'; ctxFront.fill();
             } else {
-                ctxFront.beginPath(); ctxFront.arc(currentX, currentY, 5, 0, 2 * Math.PI);
+                ctxFront.beginPath(); ctxFront.arc(currentX, currentY, 10, 0, 2 * Math.PI);
                 ctxFront.fillStyle = 'white'; ctxFront.fill();
             }
         }
@@ -166,15 +210,17 @@
         function drawSide() {
             ctxSide.clearRect(0, 0, canvasSide.width, canvasSide.height);
             const cY = canvasSide.height / 2;
-            ctxSide.lineWidth = 2; ctxSide.strokeStyle = '#dd3333';
+            ctxSide.lineWidth = 4; ctxSide.strokeStyle = '#dd3333';
             ctxSide.beginPath(); ctxSide.moveTo(0, cY); ctxSide.lineTo(canvasSide.width, cY); ctxSide.stroke();
             ctxSide.strokeStyle = '#555';
-            ctxSide.beginPath(); ctxSide.moveTo(0, cY - 25); ctxSide.lineTo(canvasSide.width, cY - 25); ctxSide.stroke();
-            ctxSide.beginPath(); ctxSide.moveTo(0, cY + 25); ctxSide.lineTo(canvasSide.width, cY + 25); ctxSide.stroke();
+            
+            const gap = canvasSide.height / 4;
+            ctxSide.beginPath(); ctxSide.moveTo(0, cY - gap); ctxSide.lineTo(canvasSide.width, cY - gap); ctxSide.stroke();
+            ctxSide.beginPath(); ctxSide.moveTo(0, cY + gap); ctxSide.lineTo(canvasSide.width, cY + gap); ctxSide.stroke();
 
             if (trace.length < 2) return;
             const refTime = isAiming ? Date.now() : trace[trace.length - 1].time;
-            ctxSide.lineWidth = 3;
+            ctxSide.lineWidth = 6;
             for (let i = 1; i < trace.length; i++) {
                 const p1 = trace[i-1], p2 = trace[i];
                 if (refTime - p2.time > TIME_WINDOW) continue; 
@@ -190,7 +236,7 @@
                 const lastP = trace[trace.length - 1];
                 const hitX = canvasSide.width; 
                 const hitY = cY + (lastP.y - canvasFront.height / 2);
-                ctxSide.beginPath(); ctxSide.arc(hitX, hitY, 6, 0, 2 * Math.PI);
+                ctxSide.beginPath(); ctxSide.arc(hitX, hitY, 12, 0, 2 * Math.PI);
                 ctxSide.fillStyle = '#00FFFF'; ctxSide.fill();
             }
         }
@@ -219,6 +265,9 @@
         }
 
         startBtn.addEventListener('click', async () => {
+            // Aktivera helskärm och ev. lås skärmorientering
+            requestFullscreen();
+
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') audioCtx.resume();
 
@@ -241,12 +290,7 @@
         });
 
         shootBtn.addEventListener('click', () => {
-            // --- VIBRATION ---
-            if ("vibrate" in navigator) {
-                // 80 millisekunder skapar en "stöt" som känns som en kort rekyl
-                navigator.vibrate(80); 
-            }
-
+            if ("vibrate" in navigator) navigator.vibrate(80); 
             playSyntheticShot(); 
             isAiming = false;
             window.removeEventListener('deviceorientation', handleOrientation);
@@ -258,7 +302,9 @@
             const lastPoint = trace[trace.length - 1];
             if(lastPoint) {
                 const dist = Math.sqrt(Math.pow(lastPoint.x - cX, 2) + Math.pow(lastPoint.y - cY, 2));
-                scoreBoard.innerText = `POÄNG: ${Math.max(0, 100 - (dist/1.5)).toFixed(1)}`;
+                // Uppdaterad poängberäkning pga ny högre upplösning
+                const maxDist = canvasFront.width / 2;
+                scoreBoard.innerText = `POÄNG: ${Math.max(0, 100 - (dist/maxDist)*100).toFixed(1)}`;
             }
             drawFront(); drawSide(); 
         });
