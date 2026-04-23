@@ -8,19 +8,21 @@
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap');
 
         * { box-sizing: border-box; user-select: none; font-family: 'Roboto', sans-serif; }
-        html, body { margin: 0; padding: 0; background-color: #111; color: #fff; overflow: hidden; width: 100vw; height: 100vh; }
+        
+        /* FIX FÖR AR-KAMERAN: Både html och body måste vara 100% transparenta konstant. */
+        html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; width: 100vw; height: 100vh; }
 
         /* --- DISKRET FEEDBACK POPUP --- */
         #discreet-feedback {
             position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%);
-            font-size: 32px; font-weight: 900; opacity: 0; transition: opacity 0.2s ease-out;
+            font-size: 32px; font-weight: 900; opacity: 0; transition: opacity 0.2s ease-out; color: #fff;
             pointer-events: none; z-index: 1000; text-shadow: 0 2px 5px rgba(0,0,0,0.8); letter-spacing: 2px;
         }
 
-        /* --- HUVUDMENY --- */
+        /* --- HUVUDMENY OVERLAY --- */
         #main-menu {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(135deg, #1a1a1a, #0a0a0a);
+            background: linear-gradient(135deg, #1a1a1a, #0a0a0a); color: #fff;
             display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000;
         }
         #main-menu h1 { color: #00ffff; font-size: 35px; margin-bottom: 5px; text-transform: uppercase; text-shadow: 0 4px 10px rgba(0,255,255,0.3); }
@@ -41,8 +43,8 @@
         }
 
         /* --- AR LÄGE STYLES --- */
-        #ar-container { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent !important; }
-        #ar-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; pointer-events: none; z-index: 10; }
+        #ar-container { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; }
+        #ar-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; pointer-events: none; z-index: 10; color: #fff; }
         #ar-header { padding: 10px 20px 10px 120px; background: linear-gradient(rgba(0,0,0,0.9), transparent); display: flex; justify-content: space-between; align-items: flex-start; pointer-events: auto; }
         .stat-box { background: rgba(0,0,0,0.6); padding: 5px 10px; border-radius: 5px; font-size: 14px; margin-bottom: 5px; border-left: 3px solid #555;}
         .stat-box span { font-weight: bold; font-size: 18px; color: #00ffff;}
@@ -57,8 +59,8 @@
         .white-dot { width: 16px; height: 16px; background: #fff; border-radius: 50%; box-shadow: 0 0 5px rgba(255,255,255,0.8); }
         #audio-status { position: absolute; bottom: 10px; left: 10px; font-size: 10px; color: #ffeb3b; background: rgba(0,0,0,0.5); padding: 5px; border-radius: 5px;}
 
-        /* --- 2D LÄGE STYLES (RESPONSIV GRID) --- */
-        #analys-container { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #121212; padding: 45px 10px 10px 10px; }
+        /* --- 2D LÄGE STYLES (Solid bakgrund enbart för 2D) --- */
+        #analys-container { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #121212; padding: 45px 10px 10px 10px; color: #fff; }
         
         .grid-layout { display: grid; grid-template-columns: 280px 1fr 1fr; grid-template-rows: 60% 40%; gap: 10px; width: 100%; height: 100%; }
         .panel { background: #1e1e1e; padding: 10px; border-radius: 8px; border: 1px solid #333; display: flex; flex-direction: column; overflow: hidden; }
@@ -105,7 +107,7 @@
             </div>
             <div class="menu-btn" id="btn-2d">
                 2D ANALYS
-                <span>Träna skytteteknik (Laser-fysik). Dynamisk analys, split-tider och EKG.</span>
+                <span>Träna skytteteknik (Laser-fysik). EKG-graf, Heatmap och Audio-avtryckare.</span>
             </div>
         </div>
     </div>
@@ -196,22 +198,15 @@
 
         document.getElementById('btn-ar').addEventListener('click', async () => {
             await requestFullscreenAndLock();
-            mainMenu.style.display = 'none'; arContainer.style.display = 'block';
-            
-            // FIX FÖR AR KAMERA PÅ ANDROID (Aggressiv transparens):
-            document.body.style.background = "none";
-            document.body.style.backgroundColor = "transparent";
-            document.documentElement.style.background = "none";
-            document.documentElement.style.backgroundColor = "transparent";
-            
+            mainMenu.style.display = 'none'; 
+            arContainer.style.display = 'block';
             initARSystem();
         });
 
         document.getElementById('btn-2d').addEventListener('click', async () => {
             await requestFullscreenAndLock();
-            mainMenu.style.display = 'none'; analysContainer.style.display = 'block';
-            document.body.style.backgroundColor = "#111";
-            document.documentElement.style.backgroundColor = "#111";
+            mainMenu.style.display = 'none'; 
+            analysContainer.style.display = 'block';
             init2DSystem();
         });
 
@@ -243,12 +238,13 @@
             const raycaster = new THREE.Raycaster();
 
             scene = new THREE.Scene();
+            // Transparent inställningar för scene
             scene.background = null; 
             scene.environment = null;
             camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 100);
             scene.add(new THREE.AmbientLight(0xffffff, 0.8));
 
-            // Renderer med alpha
+            // Renderer konfigurerad för AR Pass-through
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setClearColor(0x000000, 0); 
             renderer.setPixelRatio(window.devicePixelRatio);
@@ -272,7 +268,7 @@
             reticle = new THREE.Mesh(new THREE.RingGeometry(0.08, 0.1, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x00ff00 }));
             reticle.matrixAutoUpdate = false; reticle.visible = false; scene.add(reticle);
 
-            // Gyro för Siktet (Struket Korn) - KORRIGERADE AXLAR
+            // Gyro för Siktet (Struket Korn)
             window.addEventListener('deviceorientation', (e) => {
                 if(arContainer.style.display === 'none' || !e.alpha) return;
                 if(gyroLastX === null) { gyroLastX = e.alpha; gyroLastY = e.gamma; }
@@ -281,14 +277,13 @@
                 let dy = e.gamma - gyroLastY;
                 if(dx > 180) dx -= 360; if(dx < -180) dx += 360;
                 
-                // KORRIGERING: dx (alpha/sidled) påverkar sightVelX, dy (gamma/höjdled) påverkar sightVelY
                 sightVelX -= dx * 2.5; 
                 sightVelY -= dy * 2.5;
                 
                 gyroLastX = e.alpha; gyroLastY = e.gamma;
             });
 
-            // Ljudavkänning (AR) - COOLDOWN PÅ 1.5s
+            // Ljudavkänning (AR)
             navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = audioContext.createAnalyser();
@@ -300,12 +295,7 @@
 
             function listenForMicAR() {
                 if (arContainer.style.display !== 'none') {
-                    // Aggressiv Fix för att säkra att bakgrunden hålls transparent
-                    document.body.style.backgroundColor = "transparent";
-                    document.documentElement.style.backgroundColor = "transparent";
-
                     analyser.getByteFrequencyData(dataArray);
-                    // 1500ms cooldown
                     if (Math.max(...dataArray) > 170 && (Date.now() - lastShotTime) > 1500) {
                         lastShotTime = Date.now(); fireShotAR();
                     }
@@ -335,11 +325,13 @@
                 }
             }
 
+            // WebXR Start
             if (navigator.xr) {
                 navigator.xr.requestSession('immersive-ar', { requiredFeatures: ['hit-test'], optionalFeatures: ['dom-overlay'], domOverlay: { root: document.getElementById('ar-ui') } })
                 .then(session => { renderer.xr.setSession(session); statusBoard.innerText = "SKANNA VÄGGEN"; });
             }
 
+            // Knappar
             document.getElementById('place-btn').addEventListener('click', () => {
                 if (reticle.visible) {
                     target.position.setFromMatrixPosition(reticle.matrix); target.quaternion.setFromRotationMatrix(reticle.matrix);
@@ -417,7 +409,7 @@
 
             const micDot = document.getElementById('2d-mic-indicator');
 
-            // Gyro Input (Y INVERTERAD SOM ÖNSKAT)
+            // Gyro Input (KORRIGERAT: Y-Axeln drar siktet neråt när du tippar framåt)
             window.addEventListener('deviceorientation', (e) => {
                 if(analysContainer.style.display === 'none' || !e.alpha) return;
                 if(gyroStartX === null) { gyroStartX = e.alpha; gyroStartY = e.gamma; }
@@ -426,8 +418,8 @@
                 if (dx > 180) dx -= 360; if (dx < -180) dx += 360;
                 
                 rawAimX = 50 - (dx * 3); 
-                // KORRIGERING: Y-Axeln är nu inverterad (+)
-                rawAimY = 50 + (dy * 3); 
+                // KORRIGERING: Subtraktion gör att positiv vinkel (luta ner) flyttar Y uppåt (mot 0), negativ flyttar Y neråt (mot 100)
+                rawAimY = 50 - (dy * 3); 
             });
 
             document.getElementById('cal-btn-2d').onclick = () => { gyroStartX = null; aimX = 50; aimY = 50; rawAimX = 50; rawAimY = 50; };
