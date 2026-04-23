@@ -41,7 +41,7 @@
         }
 
         /* --- AR LÄGE STYLES --- */
-        #ar-container { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        #ar-container { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent !important; }
         #ar-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; pointer-events: none; z-index: 10; }
         #ar-header { padding: 10px 20px 10px 120px; background: linear-gradient(rgba(0,0,0,0.9), transparent); display: flex; justify-content: space-between; align-items: flex-start; pointer-events: auto; }
         .stat-box { background: rgba(0,0,0,0.6); padding: 5px 10px; border-radius: 5px; font-size: 14px; margin-bottom: 5px; border-left: 3px solid #555;}
@@ -157,7 +157,7 @@
 
                 <div id="feedback-box">
                     <div id="feedback-title">DIAGNOSTIK</div>
-                    <div id="feedback-text">Kalibrera (Centrera Sikte).<br><br>Ladda om och tryck av din attrapp. Avtryckaren har 0,8s cooldown för att undvika omladdningsljud.<br><br>Systemet analyserar automatiskt var siktet befinner sig vid avfyrning.</div>
+                    <div id="feedback-text">Kalibrera (Centrera Sikte).<br><br>Ladda om och tryck av din attrapp. Avtryckaren har 1,5s cooldown för att undvika omladdningsljud.<br><br>Systemet analyserar automatiskt var siktet befinner sig vid avfyrning.</div>
                 </div>
             </div>
 
@@ -198,8 +198,10 @@
             await requestFullscreenAndLock();
             mainMenu.style.display = 'none'; arContainer.style.display = 'block';
             
-            // FIX FÖR AR KAMERA PÅ ANDROID:
+            // FIX FÖR AR KAMERA PÅ ANDROID (Aggressiv transparens):
+            document.body.style.background = "none";
             document.body.style.backgroundColor = "transparent";
+            document.documentElement.style.background = "none";
             document.documentElement.style.backgroundColor = "transparent";
             
             initARSystem();
@@ -241,14 +243,14 @@
             const raycaster = new THREE.Raycaster();
 
             scene = new THREE.Scene();
-            scene.background = null; // Tvinga bort Three.js svarta bakgrund
+            scene.background = null; 
             scene.environment = null;
             camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 100);
             scene.add(new THREE.AmbientLight(0xffffff, 0.8));
 
             // Renderer med alpha
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-            renderer.setClearColor(0x000000, 0); // Helt transparent
+            renderer.setClearColor(0x000000, 0); 
             renderer.setPixelRatio(window.devicePixelRatio);
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.xr.enabled = true;
@@ -270,17 +272,23 @@
             reticle = new THREE.Mesh(new THREE.RingGeometry(0.08, 0.1, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x00ff00 }));
             reticle.matrixAutoUpdate = false; reticle.visible = false; scene.add(reticle);
 
-            // Gyro för Siktet (Struket Korn)
+            // Gyro för Siktet (Struket Korn) - KORRIGERADE AXLAR
             window.addEventListener('deviceorientation', (e) => {
                 if(arContainer.style.display === 'none' || !e.alpha) return;
                 if(gyroLastX === null) { gyroLastX = e.alpha; gyroLastY = e.gamma; }
-                let dx = e.alpha - gyroLastX; let dy = e.gamma - gyroLastY;
+                
+                let dx = e.alpha - gyroLastX; 
+                let dy = e.gamma - gyroLastY;
                 if(dx > 180) dx -= 360; if(dx < -180) dx += 360;
-                sightVelX -= dy * 2.5; sightVelY -= dx * 2.5;
+                
+                // KORRIGERING: dx (alpha/sidled) påverkar sightVelX, dy (gamma/höjdled) påverkar sightVelY
+                sightVelX -= dx * 2.5; 
+                sightVelY -= dy * 2.5;
+                
                 gyroLastX = e.alpha; gyroLastY = e.gamma;
             });
 
-            // Ljudavkänning (AR) - COOLDOWN PÅ 0.8s
+            // Ljudavkänning (AR) - COOLDOWN PÅ 1.5s
             navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = audioContext.createAnalyser();
@@ -292,9 +300,13 @@
 
             function listenForMicAR() {
                 if (arContainer.style.display !== 'none') {
+                    // Aggressiv Fix för att säkra att bakgrunden hålls transparent
+                    document.body.style.backgroundColor = "transparent";
+                    document.documentElement.style.backgroundColor = "transparent";
+
                     analyser.getByteFrequencyData(dataArray);
-                    // 800ms cooldown för mantelrörelse
-                    if (Math.max(...dataArray) > 170 && (Date.now() - lastShotTime) > 800) {
+                    // 1500ms cooldown
+                    if (Math.max(...dataArray) > 170 && (Date.now() - lastShotTime) > 1500) {
                         lastShotTime = Date.now(); fireShotAR();
                     }
                 }
@@ -316,6 +328,7 @@
                     const hole = new THREE.Mesh(new THREE.CircleGeometry(0.005, 16), new THREE.MeshBasicMaterial({ color: 0xff0000, depthTest: false }));
                     hole.position.set(hit.x, hit.y, 0.001); targetDecals.add(hole);
                     hits++; document.getElementById('ar-hit-count').innerText = hits;
+                    statusBoard.innerText = "HÅLL STRUKET KORN";
                     popFeedback("TRÄFF!", true);
                 } else {
                     popFeedback("BOM!", false);
@@ -399,23 +412,26 @@
             let gyroStartX = null, gyroStartY = null, rawAimX = 50, rawAimY = 50;
             
             let audioCtx2D, analyser2D, dataArray2D;
-            let lastTriggerTime2D = 0; // För mic cooldown
-            let lastShotTimeRecord = 0; // För split-tid
+            let lastTriggerTime2D = 0; 
+            let lastShotTimeRecord = 0; 
 
             const micDot = document.getElementById('2d-mic-indicator');
 
-            // Gyro Input
+            // Gyro Input (Y INVERTERAD SOM ÖNSKAT)
             window.addEventListener('deviceorientation', (e) => {
                 if(analysContainer.style.display === 'none' || !e.alpha) return;
                 if(gyroStartX === null) { gyroStartX = e.alpha; gyroStartY = e.gamma; }
-                let dx = e.alpha - gyroStartX, dy = e.gamma - gyroStartY;
+                let dx = e.alpha - gyroStartX; 
+                let dy = e.gamma - gyroStartY;
                 if (dx > 180) dx -= 360; if (dx < -180) dx += 360;
-                rawAimX = 50 - (dx * 3); rawAimY = 50 - (dy * 3);
+                
+                rawAimX = 50 - (dx * 3); 
+                // KORRIGERING: Y-Axeln är nu inverterad (+)
+                rawAimY = 50 + (dy * 3); 
             });
 
             document.getElementById('cal-btn-2d').onclick = () => { gyroStartX = null; aimX = 50; aimY = 50; rawAimX = 50; rawAimY = 50; };
 
-            // Mic Input för 2D
             navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
                 audioCtx2D = new (window.AudioContext || window.webkitAudioContext)();
                 analyser2D = audioCtx2D.createAnalyser();
@@ -428,8 +444,8 @@
             function listenForMic2D() {
                 if (analysContainer.style.display !== 'none') {
                     analyser2D.getByteFrequencyData(dataArray2D);
-                    // 800ms cooldown för att slippa omladdningsljud
-                    if (Math.max(...dataArray2D) > 170 && (Date.now() - lastTriggerTime2D) > 800) {
+                    // 1500ms cooldown (1.5 sekunder)
+                    if (Math.max(...dataArray2D) > 170 && (Date.now() - lastTriggerTime2D) > 1500) {
                         lastTriggerTime2D = Date.now(); 
                         registerShot2D();
                     }
@@ -484,7 +500,6 @@
                 });
             }
 
-            // DYNAMISK FEEDBACK
             function registerShot2D() {
                 let now = Date.now();
                 let split = lastShotTimeRecord === 0 ? 0 : (now - lastShotTimeRecord) / 1000;
@@ -497,12 +512,9 @@
                 document.getElementById('analys-avg').innerText = (shots.reduce((a,b)=>a+b.pts,0)/shots.length).toFixed(1);
                 document.getElementById('analys-split').innerText = split > 0 ? split.toFixed(2) + "s" : "--";
                 
-                // Beräkna offset från mitten (50,50)
                 let dx = aimX - 50; let dy = aimY - 50;
-                
                 let fC = "#00ff00", fT = "PERFEKT!", fTxt = "Mycket bra avfyrning. Siktet låg stilla i mitten.";
                 
-                // Analysera var skottet hamnade för dynamisk feedback
                 if (dy > 4 && Math.abs(dx) < 5) {
                     fC="#ff1744"; fT="DIPPAR (LÅGT)"; fTxt="Träffen är låg. Du trycker ner vapnet (anticiperar rekylen) precis när skottet går.";
                 } else if (dx < -4 && dy > 2) {
