@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=landscape">
-    <title>2D Skytteteknik Analys</title>
+    <title>2D Skytteteknik Analys Pro</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap');
         * { box-sizing: border-box; user-select: none; font-family: 'Roboto', sans-serif; }
@@ -15,21 +15,27 @@
 
         #discreet-feedback { position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%); font-size: 32px; font-weight: 900; opacity: 0; transition: opacity 0.2s ease-out; z-index: 1000; text-shadow: 0 2px 5px rgba(0,0,0,0.8); letter-spacing: 2px;}
         
-        .grid-layout { display: grid; grid-template-columns: 280px 1fr 1fr; grid-template-rows: 60% 40%; gap: 10px; width: 100%; height: 100%; display: none;}
+        .grid-layout { display: grid; grid-template-columns: 300px 1fr 1fr; grid-template-rows: 60% 40%; gap: 10px; width: 100%; height: 100%; display: none;}
         .panel { background: #1e1e1e; padding: 10px; border-radius: 8px; border: 1px solid #333; display: flex; flex-direction: column; overflow: hidden; }
         
         .controls-col { grid-column: 1; grid-row: 1 / span 2; justify-content: space-between;}
         .controls-col h2 { font-size: 16px; color: #00ffff; margin: 0 0 10px 0; display: flex; justify-content: space-between; align-items: center;}
-        .mic-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: red; margin-left: 10px; box-shadow: 0 0 5px red;}
+        
+        /* Mic Indikator (Röd = Av, Grön = Redo, Orange = Cooldown) */
+        .mic-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: red; margin-left: 10px; box-shadow: 0 0 5px red;}
         .mic-dot.active { background: #00ff00; box-shadow: 0 0 5px #00ff00; }
+        .mic-dot.cooldown { background: #ff9800; box-shadow: 0 0 5px #ff9800; }
 
         .stat-row { display: flex; justify-content: space-between; color: #aaa; font-size: 14px; font-weight: bold; margin-bottom: 5px; }
         .stat-row span { color: #fff; }
         
-        .input-group { margin-bottom: 10px; }
-        .input-group label { font-size: 10px; color: #888; text-transform: uppercase; font-weight: bold; display: block; margin-bottom: 2px;}
-        .input-group select { width: 100%; padding: 8px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 4px; font-size: 12px; }
+        .input-group { margin-bottom: 10px; background: rgba(0,0,0,0.3); padding: 5px; border-radius: 5px; border: 1px solid #333;}
+        .input-group label { font-size: 10px; color: #888; text-transform: uppercase; font-weight: bold; display: block; margin-bottom: 5px;}
+        .input-group select { width: 100%; padding: 8px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 4px; font-size: 12px; margin-bottom: 5px;}
         
+        .checkbox-row { display: flex; justify-content: space-between; font-size: 11px; color: #ccc;}
+        .checkbox-row label { display: flex; align-items: center; gap: 5px; cursor: pointer; text-transform: none; color: #fff;}
+
         .btn-row { display: flex; gap: 5px; margin-top: 5px;}
         .btn-row button { padding: 10px; font-weight: bold; border-radius: 4px; border: none; color: white; cursor: pointer; font-size: 12px; text-transform: uppercase; flex: 1;}
         #cal-btn-2d { background: #007bff; } #reset-btn-2d { background: #d32f2f; }
@@ -65,22 +71,26 @@
             <div class="stat-row"><div>Poängsnitt:</div><span id="analys-avg">0.0</span></div>
             <div class="stat-row" style="color:#00ffff;"><div>Split-tid:</div><span id="analys-split">0.00s</span></div>
 
-            <div class="input-group" style="margin-top: 15px;">
-                <label>Enhetens Montering på vapnet</label>
+            <div class="input-group">
+                <label>Telefonens Montering</label>
                 <select id="mount-select">
                     <option value="top">Ovanpå (Skärmen mot dig)</option>
-                    <option value="side">På sidan (Skärmen åt vänster/höger)</option>
+                    <option value="side">På sidan (Skärmen pekar utåt)</option>
                 </select>
+                <div class="checkbox-row">
+                    <label><input type="checkbox" id="inv-x"> Invertera X (Sida)</label>
+                    <label><input type="checkbox" id="inv-y"> Invertera Y (Höjd)</label>
+                </div>
             </div>
 
             <div class="btn-row">
-                <button id="cal-btn-2d">Centrera</button>
-                <button id="reset-btn-2d">Rensa</button>
+                <button id="cal-btn-2d">Centrera Sikte</button>
+                <button id="reset-btn-2d">Rensa Data</button>
             </div>
 
             <div id="feedback-box">
                 <div id="feedback-title">DIAGNOSTIK</div>
-                <div id="feedback-text">Kalibrera siktet.<br><br>Ladda om och tryck av attrappen. Cooldown: 1.5s.<br><br>Systemet mäter rekylupptagning och avfyrningsfel.</div>
+                <div id="feedback-text">Centrera siktet genom att hålla vapnet mot tavlan och klicka "Centrera Sikte".<br><br>Mic-indikatorn är <b>orange</b> när vapnet laddas om (2,5s cooldown) och <b>grön</b> när du kan skjuta.</div>
             </div>
         </div>
 
@@ -107,9 +117,12 @@
         
         tCan.width = 400; tCan.height = 400; hCan.width = 400; hCan.height = 400; eCan.width = 800; eCan.height = 200;
 
-        let aimX = 50, aimY = 50, trace = [], ekg = new Array(200).fill(50), shots = [];
-        let gyroStartX = null, gyroStartY = null, gyroStartZ = null, rawAimX = 50, rawAimY = 50;
+        let rawAimX = 50, rawAimY = 50, aimX = 50, aimY = 50;
+        let trace = [], ekg = new Array(200).fill(50), shots = [];
+        
+        let prevAlpha = null, prevBeta = null, prevGamma = null;
         let lastTriggerTime = 0, lastShotRecord = 0;
+        const cooldownTime = 2500; // 2.5 sekunder!
 
         document.getElementById('btn-start').addEventListener('click', async () => {
             try {
@@ -125,12 +138,20 @@
                 const analyser = audioCtx.createAnalyser();
                 audioCtx.createMediaStreamSource(stream).connect(analyser);
                 const dataArray = new Uint8Array(analyser.frequencyBinCount);
-                document.getElementById('mic-indicator').classList.add('active');
+                const micDot = document.getElementById('mic-indicator');
                 
                 function listenForMic() {
                     analyser.getByteFrequencyData(dataArray);
-                    if (Math.max(...dataArray) > 170 && (Date.now() - lastTriggerTime) > 1500) {
-                        lastTriggerTime = Date.now(); registerShot();
+                    let now = Date.now();
+                    
+                    if (now - lastTriggerTime < cooldownTime) {
+                        micDot.className = 'mic-dot cooldown'; // Orange under omladdning
+                    } else {
+                        micDot.className = 'mic-dot active'; // Grön och redo
+                        if (Math.max(...dataArray) > 170) {
+                            lastTriggerTime = now; 
+                            registerShot();
+                        }
                     }
                     requestAnimationFrame(listenForMic);
                 }
@@ -140,33 +161,56 @@
             loop2D();
         });
 
-        // GYRO LOGIK MED MONTERINGS-VÄXEL
+        // --- RELATIVT GYRO (Eliminerar teleportering och Gimbal Lock) ---
         window.addEventListener('deviceorientation', (e) => {
             if(!e.alpha) return;
-            if(gyroStartX === null) { gyroStartX = e.alpha; gyroStartY = e.gamma; gyroStartZ = e.beta; }
             
-            let dx = e.alpha - gyroStartX; 
-            let dy = e.gamma - gyroStartY; 
-            let dz = e.beta - gyroStartZ; 
-            
-            if (dx > 180) dx -= 360; if (dx < -180) dx += 360;
-            if (dy > 180) dy -= 360; if (dy < -180) dy += 360;
-            if (dz > 180) dz -= 360; if (dz < -180) dz += 360;
-            
-            const mount = document.getElementById('mount-select').value;
-            
-            if (mount === 'top') {
-                // Standard: Skärmen pekar mot dig
-                rawAimX = 50 - (dx * 3); 
-                rawAimY = 50 - (dy * 3); // Luta ner = Y ökar (pricken åker ner på skärmen)
-            } else {
-                // På sidan: alpha (kompass) är upp/ner, beta/gamma är sidled
-                rawAimX = 50 - (dz * 3); 
-                rawAimY = 50 - (dx * 3); 
+            if(prevAlpha === null) { 
+                prevAlpha = e.alpha; prevBeta = e.beta; prevGamma = e.gamma; 
+                return; 
             }
+            
+            let dAlpha = e.alpha - prevAlpha; 
+            let dBeta = e.beta - prevBeta;
+            let dGamma = e.gamma - prevGamma; 
+            
+            // Korrigera ifall axlarna slår över 360-gränsen
+            if (dAlpha > 180) dAlpha -= 360; else if (dAlpha < -180) dAlpha += 360;
+            if (dBeta > 180) dBeta -= 360; else if (dBeta < -180) dBeta += 360;
+            if (dGamma > 90) dGamma -= 180; else if (dGamma < -90) dGamma += 180; // Gamma slår över vid 90
+            
+            prevAlpha = e.alpha; prevBeta = e.beta; prevGamma = e.gamma;
+
+            // Ignorera extrema spikar (om telefonen flippar ur sensormässigt)
+            if (Math.abs(dAlpha) > 30 || Math.abs(dBeta) > 30 || Math.abs(dGamma) > 30) return;
+
+            const mount = document.getElementById('mount-select').value;
+            const invX = document.getElementById('inv-x').checked ? -1 : 1;
+            const invY = document.getElementById('inv-y').checked ? -1 : 1;
+            
+            let moveX = 0, moveY = 0;
+            const sensitivity = 3.0;
+
+            if (mount === 'top') {
+                // Standard: Skärmen ovanpå vapnet
+                moveX = dAlpha;
+                moveY = dGamma; // Luta telefonen fram/bak
+            } else {
+                // På sidan: Skärmen åt sidan
+                moveX = dGamma; 
+                moveY = dAlpha; 
+            }
+
+            // Applicera rörelsen med eventuell invertering
+            rawAimX -= (moveX * sensitivity * invX);
+            rawAimY -= (moveY * sensitivity * invY);
+
+            // Begränsa så siktet inte flyger i all oändlighet utanför skärmen
+            rawAimX = Math.max(-50, Math.min(150, rawAimX));
+            rawAimY = Math.max(-50, Math.min(150, rawAimY));
         });
 
-        document.getElementById('cal-btn-2d').onclick = () => { gyroStartX = null; aimX = 50; aimY = 50; rawAimX = 50; rawAimY = 50; };
+        document.getElementById('cal-btn-2d').onclick = () => { rawAimX = 50; rawAimY = 50; aimX = 50; aimY = 50; };
         
         document.getElementById('reset-btn-2d').onclick = () => {
             shots=[]; lastShotRecord = 0;
@@ -230,7 +274,9 @@
         }
 
         function loop2D() {
-            aimX += (rawAimX - aimX) * 0.2; aimY += (rawAimY - aimY) * 0.2;
+            // Mjuk uppdatering av siktet (Lerp)
+            aimX += (rawAimX - aimX) * 0.3; aimY += (rawAimY - aimY) * 0.3;
+            
             trace.push({x:aimX, y:aimY}); if(trace.length>30) trace.shift();
             ekg.push(aimY); if(ekg.length>200) ekg.shift();
 
@@ -248,6 +294,7 @@
             eCtx.beginPath(); eCtx.strokeStyle='#00ffff'; eCtx.lineWidth=3;
             for(let i=0; i<ekg.length; i++) { const x = i*(800/200), y = (ekg[i]/100)*200; if(i===0) eCtx.moveTo(x,y); else eCtx.lineTo(x,y); }
             eCtx.stroke();
+            
             requestAnimationFrame(loop2D);
         }
         updateHeatmap();
