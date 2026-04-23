@@ -8,12 +8,12 @@
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap');
 
         * { box-sizing: border-box; user-select: none; font-family: 'Roboto', sans-serif; }
-        body { margin: 0; padding: 0; background-color: #111; color: #fff; overflow: hidden; width: 100vw; height: 100vh; transition: background-color 0.5s; }
+        html, body { margin: 0; padding: 0; background-color: #111; color: #fff; overflow: hidden; width: 100vw; height: 100vh; }
 
         /* --- DISKRET FEEDBACK POPUP --- */
         #discreet-feedback {
-            position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%);
-            font-size: 32px; font-weight: 900; opacity: 0; transition: opacity 0.3s ease-out;
+            position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 32px; font-weight: 900; opacity: 0; transition: opacity 0.2s ease-out;
             pointer-events: none; z-index: 1000; text-shadow: 0 2px 5px rgba(0,0,0,0.8); letter-spacing: 2px;
         }
 
@@ -41,7 +41,7 @@
         }
 
         /* --- AR LÄGE STYLES --- */
-        #ar-container { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; }
+        #ar-container { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
         #ar-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; pointer-events: none; z-index: 10; }
         #ar-header { padding: 10px 20px 10px 120px; background: linear-gradient(rgba(0,0,0,0.9), transparent); display: flex; justify-content: space-between; align-items: flex-start; pointer-events: auto; }
         .stat-box { background: rgba(0,0,0,0.6); padding: 5px 10px; border-radius: 5px; font-size: 14px; margin-bottom: 5px; border-left: 3px solid #555;}
@@ -66,21 +66,15 @@
         .controls-col { grid-column: 1; grid-row: 1 / span 2; justify-content: space-between;}
         .controls-col h2 { font-size: 16px; color: #00ffff; margin: 0 0 10px 0; display: flex; justify-content: space-between; align-items: center;}
         
-        /* 2D Mic status */
         .mic-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: red; margin-left: 10px; box-shadow: 0 0 5px red;}
         .mic-dot.active { background: #00ff00; box-shadow: 0 0 5px #00ff00; }
 
-        .stat-row { display: flex; justify-content: space-between; color: #aaa; font-size: 14px; font-weight: bold; margin-bottom: 10px; }
+        .stat-row { display: flex; justify-content: space-between; color: #aaa; font-size: 14px; font-weight: bold; margin-bottom: 5px; }
         .stat-row span { color: #fff; }
         
-        .input-group { margin-bottom: 10px; }
-        .input-group label { font-size: 10px; color: #888; text-transform: uppercase; font-weight: bold; }
-        .input-group select { width: 100%; padding: 8px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 4px; font-size: 12px; }
-        
-        .btn-row { display: flex; gap: 5px; }
+        .btn-row { display: flex; gap: 5px; margin-top: 5px;}
         .btn-row button { padding: 10px; font-weight: bold; border-radius: 4px; border: none; color: white; cursor: pointer; font-size: 12px; text-transform: uppercase;}
-        #shoot-btn-2d { background: #2e7d32; flex: 2; }
-        #cal-btn-2d { background: #007bff; flex: 1.5; }
+        #cal-btn-2d { background: #007bff; flex: 2; }
         #reset-btn-2d { background: #d32f2f; flex: 1; }
 
         #feedback-box { border-left: 3px solid #00ffff; background: rgba(0,255,255,0.05); padding: 10px; margin-top: 10px; flex-grow: 1; overflow-y: auto;}
@@ -111,7 +105,7 @@
             </div>
             <div class="menu-btn" id="btn-2d">
                 2D ANALYS
-                <span>Träna skytteteknik (Laser-fysik). EKG-graf, Heatmap och Audio-avtryckare.</span>
+                <span>Träna skytteteknik (Laser-fysik). Dynamisk analys, split-tider och EKG.</span>
             </div>
         </div>
     </div>
@@ -152,30 +146,18 @@
         <div class="grid-layout">
             <div class="panel controls-col">
                 <h2>Analysverktyg <div class="mic-dot" id="2d-mic-indicator"></div></h2>
-                <div class="stat-row">
-                    <div>Träffar: <span id="analys-hits">0</span></div>
-                    <div>Snitt: <span id="analys-avg">0.0</span></div>
-                </div>
-
-                <div class="input-group">
-                    <label>Injektera Teknik-fel vid skott</label>
-                    <select id="technique-select">
-                        <option value="neutral">Inget fel (Neutral)</option>
-                        <option value="dip">Dippar (Anticiperar)</option>
-                        <option value="pull_left">Ryck Vänster (Pushing)</option>
-                        <option value="pull_right">Ryck Höger (Milking)</option>
-                    </select>
-                </div>
+                <div class="stat-row"><div>Träffar:</div><span id="analys-hits">0</span></div>
+                <div class="stat-row"><div>Poängsnitt:</div><span id="analys-avg">0.0</span></div>
+                <div class="stat-row" style="color:#00ffff;"><div>Senaste Split:</div><span id="analys-split">0.00s</span></div>
 
                 <div class="btn-row">
-                    <button id="shoot-btn-2d">Skjut (Skärm)</button>
-                    <button id="cal-btn-2d">Centrera Gyro</button>
+                    <button id="cal-btn-2d">Centrera Sikte</button>
                     <button id="reset-btn-2d">Rensa</button>
                 </div>
 
                 <div id="feedback-box">
                     <div id="feedback-title">DIAGNOSTIK</div>
-                    <div id="feedback-text">Ladda om och tryck av din attrapp. Mikrofonen analyserar klicket. Håll mobilen platt för att sikta.</div>
+                    <div id="feedback-text">Kalibrera (Centrera Sikte).<br><br>Ladda om och tryck av din attrapp. Avtryckaren har 0,8s cooldown för att undvika omladdningsljud.<br><br>Systemet analyserar automatiskt var siktet befinner sig vid avfyrning.</div>
                 </div>
             </div>
 
@@ -203,12 +185,11 @@
         function popFeedback(text, isHit) {
             const el = document.getElementById('discreet-feedback');
             el.innerText = text;
-            el.style.color = isHit ? "#00e676" : "#ff1744"; // Klar grön / röd
+            el.style.color = isHit ? "#00e676" : "#ff1744";
             el.style.opacity = 1;
             setTimeout(() => { el.style.opacity = 0; }, 800);
         }
 
-        // --- NAVIGERING OCH SETUP ---
         const mainMenu = document.getElementById('main-menu');
         const arContainer = document.getElementById('ar-container');
         const analysContainer = document.getElementById('analys-container');
@@ -216,7 +197,11 @@
         document.getElementById('btn-ar').addEventListener('click', async () => {
             await requestFullscreenAndLock();
             mainMenu.style.display = 'none'; arContainer.style.display = 'block';
-            document.body.style.backgroundColor = "transparent"; // Fixar svarta kameran i Chrome AR!
+            
+            // FIX FÖR AR KAMERA PÅ ANDROID:
+            document.body.style.backgroundColor = "transparent";
+            document.documentElement.style.backgroundColor = "transparent";
+            
             initARSystem();
         });
 
@@ -224,6 +209,7 @@
             await requestFullscreenAndLock();
             mainMenu.style.display = 'none'; analysContainer.style.display = 'block';
             document.body.style.backgroundColor = "#111";
+            document.documentElement.style.backgroundColor = "#111";
             init2DSystem();
         });
 
@@ -233,7 +219,6 @@
                 if (screen.orientation && screen.orientation.lock) await screen.orientation.lock("landscape");
             } catch(e) {}
         }
-
 
         // ==========================================
         // === AR-SYSTEM (THREE.JS + MIC + GYRO) ===
@@ -256,13 +241,14 @@
             const raycaster = new THREE.Raycaster();
 
             scene = new THREE.Scene();
-            scene.background = null; // Extra säkerhet för AR transparens
+            scene.background = null; // Tvinga bort Three.js svarta bakgrund
+            scene.environment = null;
             camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 100);
             scene.add(new THREE.AmbientLight(0xffffff, 0.8));
 
             // Renderer med alpha
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-            renderer.setClearColor(0x000000, 0); 
+            renderer.setClearColor(0x000000, 0); // Helt transparent
             renderer.setPixelRatio(window.devicePixelRatio);
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.xr.enabled = true;
@@ -288,19 +274,13 @@
             window.addEventListener('deviceorientation', (e) => {
                 if(arContainer.style.display === 'none' || !e.alpha) return;
                 if(gyroLastX === null) { gyroLastX = e.alpha; gyroLastY = e.gamma; }
-                
-                let dx = e.alpha - gyroLastX;
-                let dy = e.gamma - gyroLastY;
+                let dx = e.alpha - gyroLastX; let dy = e.gamma - gyroLastY;
                 if(dx > 180) dx -= 360; if(dx < -180) dx += 360;
-                
-                // Tröghet (Vapnets vikt)
-                sightVelX -= dy * 2.5; 
-                sightVelY -= dx * 2.5;
-
+                sightVelX -= dy * 2.5; sightVelY -= dx * 2.5;
                 gyroLastX = e.alpha; gyroLastY = e.gamma;
             });
 
-            // Ljudavkänning (AR)
+            // Ljudavkänning (AR) - COOLDOWN PÅ 0.8s
             navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = audioContext.createAnalyser();
@@ -313,7 +293,8 @@
             function listenForMicAR() {
                 if (arContainer.style.display !== 'none') {
                     analyser.getByteFrequencyData(dataArray);
-                    if (Math.max(...dataArray) > 150 && (Date.now() - lastShotTime) > 800) {
+                    // 800ms cooldown för mantelrörelse
+                    if (Math.max(...dataArray) > 170 && (Date.now() - lastShotTime) > 800) {
                         lastShotTime = Date.now(); fireShotAR();
                     }
                 }
@@ -325,7 +306,6 @@
                 frontSightEl.querySelector('.white-dot').style.background = "red";
                 sightVelY -= 40; setTimeout(() => frontSightEl.querySelector('.white-dot').style.background = "#fff", 100);
 
-                // Straffa skottet om siktet inte är linjerat (Struket korn-matematik)
                 const vecX = (sightOffsetX / (window.innerWidth / 2));
                 const vecY = -(sightOffsetY / (window.innerHeight / 2));
                 raycaster.setFromCamera(new THREE.Vector2(vecX, vecY), camera);
@@ -336,20 +316,17 @@
                     const hole = new THREE.Mesh(new THREE.CircleGeometry(0.005, 16), new THREE.MeshBasicMaterial({ color: 0xff0000, depthTest: false }));
                     hole.position.set(hit.x, hit.y, 0.001); targetDecals.add(hole);
                     hits++; document.getElementById('ar-hit-count').innerText = hits;
-                    statusBoard.innerText = "HÅLL STRUKET KORN";
-                    popFeedback("TRÄFF", true);
+                    popFeedback("TRÄFF!", true);
                 } else {
-                    popFeedback("BOM", false);
+                    popFeedback("BOM!", false);
                 }
             }
 
-            // WebXR Start
             if (navigator.xr) {
                 navigator.xr.requestSession('immersive-ar', { requiredFeatures: ['hit-test'], optionalFeatures: ['dom-overlay'], domOverlay: { root: document.getElementById('ar-ui') } })
                 .then(session => { renderer.xr.setSession(session); statusBoard.innerText = "SKANNA VÄGGEN"; });
             }
 
-            // Knappar
             document.getElementById('place-btn').addEventListener('click', () => {
                 if (reticle.visible) {
                     target.position.setFromMatrixPosition(reticle.matrix); target.quaternion.setFromRotationMatrix(reticle.matrix);
@@ -362,7 +339,6 @@
                 hits = 0; document.getElementById('ar-hit-count').innerText = 0;
             });
             document.getElementById('ar-move-btn').addEventListener('click', () => { target.visible = false; placingMode = true; statusBoard.innerText = "SKANNA VÄGGEN"; });
-
             document.getElementById('air-spawn-btn').addEventListener('click', () => {
                 const dist = parseFloat(document.getElementById('air-dist-input').value);
                 if (isNaN(dist) || dist <= 0) return;
@@ -380,7 +356,6 @@
                     if (target.visible) distanceBoard.innerText = camera.position.distanceTo(target.position).toFixed(1);
                     else distanceBoard.innerText = "--";
 
-                    // Siktets fjäderfysik
                     sightVelX *= 0.8; sightVelY *= 0.8; 
                     sightOffsetX += sightVelX; sightOffsetY += sightVelY;
                     sightOffsetX += (0 - sightOffsetX) * 0.15; sightOffsetY += (0 - sightOffsetY) * 0.15;
@@ -421,10 +396,12 @@
             tCan.width = 400; tCan.height = 400; hCan.width = 400; hCan.height = 400; eCan.width = 800; eCan.height = 200;
 
             let aimX = 50, aimY = 50, trace = [], ekg = new Array(200).fill(50), shots = [];
-            let isShooting = false, biasX = 0, biasY = 0;
             let gyroStartX = null, gyroStartY = null, rawAimX = 50, rawAimY = 50;
             
-            let audioCtx2D, analyser2D, dataArray2D, lastShotTime2D = 0;
+            let audioCtx2D, analyser2D, dataArray2D;
+            let lastTriggerTime2D = 0; // För mic cooldown
+            let lastShotTimeRecord = 0; // För split-tid
+
             const micDot = document.getElementById('2d-mic-indicator');
 
             // Gyro Input
@@ -451,9 +428,10 @@
             function listenForMic2D() {
                 if (analysContainer.style.display !== 'none') {
                     analyser2D.getByteFrequencyData(dataArray2D);
-                    if (Math.max(...dataArray2D) > 150 && (Date.now() - lastShotTime2D) > 800) {
-                        lastShotTime2D = Date.now(); 
-                        document.getElementById('shoot-btn-2d').click(); // Trigga skott
+                    // 800ms cooldown för att slippa omladdningsljud
+                    if (Math.max(...dataArray2D) > 170 && (Date.now() - lastTriggerTime2D) > 800) {
+                        lastTriggerTime2D = Date.now(); 
+                        registerShot2D();
                     }
                 }
                 requestAnimationFrame(listenForMic2D);
@@ -472,7 +450,7 @@
             function loop2D() {
                 if(analysContainer.style.display === 'none') return requestAnimationFrame(loop2D);
                 
-                aimX += (rawAimX + biasX - aimX) * 0.2; aimY += (rawAimY + biasY - aimY) * 0.2;
+                aimX += (rawAimX - aimX) * 0.2; aimY += (rawAimY - aimY) * 0.2;
                 trace.push({x:aimX, y:aimY}); if(trace.length>30) trace.shift();
                 ekg.push(aimY); if(ekg.length>200) ekg.shift();
 
@@ -506,35 +484,50 @@
                 });
             }
 
-            document.getElementById('shoot-btn-2d').onclick = () => {
-                if(isShooting) return;
-                const tech = document.getElementById('technique-select').value;
-                if(tech==='dip') { biasX=0; biasY=15; } else if(tech==='pull_left') { biasX=-12; biasY=3; } else if(tech==='pull_right') { biasX=12; biasY=2; } else { biasX=0; biasY=0; }
-                isShooting = true;
+            // DYNAMISK FEEDBACK
+            function registerShot2D() {
+                let now = Date.now();
+                let split = lastShotTimeRecord === 0 ? 0 : (now - lastShotTimeRecord) / 1000;
+                lastShotTimeRecord = now;
+
+                let pts = 10 - Math.floor(Math.sqrt(Math.pow(aimX-50,2) + Math.pow(aimY-50,2))/4.5);
+                if(pts<0) pts=0; shots.push({x:aimX, y:aimY, pts});
                 
-                setTimeout(() => {
-                    let pts = 10 - Math.floor(Math.sqrt(Math.pow(aimX-50,2) + Math.pow(aimY-50,2))/4.5);
-                    if(pts<0) pts=0; shots.push({x:aimX, y:aimY, pts});
-                    
-                    document.getElementById('analys-hits').innerText = shots.length;
-                    document.getElementById('analys-avg').innerText = (shots.reduce((a,b)=>a+b.pts,0)/shots.length).toFixed(1);
-                    
-                    let fC = "#00ff00", fT = "PERFEKT AVFYRNING", fTxt = "Bra teknik. Vapnet låg stilla.";
-                    if(tech==='dip'){ fC="#ff1744"; fT="DIP (ANTICIPATION)"; fTxt="Tydlig dipp nedåt i EKG. Du spänner handen och möter rekylen innan skottet."; }
-                    else if(tech==='pull_left'){ fC="#ff9800"; fT="DRAG VÄNSTER"; fTxt="För lite pekfinger på avtryckaren (pushing)."; }
-                    else if(tech==='pull_right'){ fC="#ff9800"; fT="DRAG HÖGER"; fTxt="För mycket pekfinger i varbygeln."; }
-                    
-                    document.getElementById('feedback-box').style.borderColor = fC;
-                    document.getElementById('feedback-title').innerText = fT; document.getElementById('feedback-title').style.color = fC;
-                    document.getElementById('feedback-text').innerText = fTxt;
-                    
-                    popFeedback(pts > 0 ? "TRÄFF!" : "BOM!", pts > 0); updateHeatmap();
-                    setTimeout(() => { isShooting=false; biasX=0; biasY=0; }, 100);
-                }, 150); // Simulerar trigger break delay
-            };
+                document.getElementById('analys-hits').innerText = shots.length;
+                document.getElementById('analys-avg').innerText = (shots.reduce((a,b)=>a+b.pts,0)/shots.length).toFixed(1);
+                document.getElementById('analys-split').innerText = split > 0 ? split.toFixed(2) + "s" : "--";
+                
+                // Beräkna offset från mitten (50,50)
+                let dx = aimX - 50; let dy = aimY - 50;
+                
+                let fC = "#00ff00", fT = "PERFEKT!", fTxt = "Mycket bra avfyrning. Siktet låg stilla i mitten.";
+                
+                // Analysera var skottet hamnade för dynamisk feedback
+                if (dy > 4 && Math.abs(dx) < 5) {
+                    fC="#ff1744"; fT="DIPPAR (LÅGT)"; fTxt="Träffen är låg. Du trycker ner vapnet (anticiperar rekylen) precis när skottet går.";
+                } else if (dx < -4 && dy > 2) {
+                    fC="#ff9800"; fT="LÅGT VÄNSTER"; fTxt="Klassiskt tecken på att du 'pushar' (för lite avtryckarfinger) eller mjölkar greppet.";
+                } else if (dx < -5) {
+                    fC="#ff9800"; fT="DRAG VÄNSTER"; fTxt="Du drar vapnet åt vänster. Kontrollera placeringen av pekfingret på avtryckaren.";
+                } else if (dx > 5) {
+                    fC="#ff9800"; fT="DRAG HÖGER"; fTxt="Träffen är åt höger. Du har sannolikt för mycket finger inne i varbygeln.";
+                } else if (dy < -5) {
+                    fC="#ff9800"; fT="HÖGT"; fTxt="Träffen är hög. Du bryter upp handleden (heeling) under avfyrningen.";
+                } else if (pts > 0 && pts < 8) {
+                    fC="#ffeb3b"; fT="OKAY"; fTxt="Bra, men du har generellt lite svaj i siktet. Försök stabilisera stödet.";
+                }
+                
+                document.getElementById('feedback-box').style.borderColor = fC;
+                document.getElementById('feedback-title').innerText = fT; document.getElementById('feedback-title').style.color = fC;
+                document.getElementById('feedback-text').innerText = fTxt;
+                
+                popFeedback(pts > 0 ? "TRÄFF!" : "BOM!", pts > 0); 
+                updateHeatmap();
+            }
 
             document.getElementById('reset-btn-2d').onclick = () => {
-                shots=[]; document.getElementById('analys-hits').innerText='0'; document.getElementById('analys-avg').innerText='0.0';
+                shots=[]; lastShotTimeRecord = 0;
+                document.getElementById('analys-hits').innerText='0'; document.getElementById('analys-avg').innerText='0.0'; document.getElementById('analys-split').innerText='0.00s';
                 document.getElementById('feedback-title').innerText="DIAGNOSTIK"; document.getElementById('feedback-text').innerText="Kalibrera gyro och skjut."; updateHeatmap();
             };
 
