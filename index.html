@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=landscape">
-    <title>2D Analysator - Struket Korn</title>
+    <title>2D Analysator - Struket Korn Pro</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap');
         * { box-sizing: border-box; user-select: none; font-family: 'Roboto', sans-serif; }
@@ -52,10 +52,16 @@
         .square-canvas { width: 100%; height: calc(100% - 20px); max-height: 100%; aspect-ratio: 1/1; }
         .wide-canvas { width: 100%; height: calc(100% - 20px); }
 
-        /* NYTT: Siktet i 2D-vyn */
+        /* NYTT: VISUELLT KORRIGERAT STRUKET KORN */
         #glock-sight-2d { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); width: 180px; height: 100px; pointer-events: none; display: flex; justify-content: center; align-items: flex-end; z-index: 5;}
-        .rear-sight-2d { width: 120px; height: 45px; border: 25px solid #1a1a1a; border-top: none; position: absolute; bottom: 0; border-radius: 4px; box-shadow: inset 0 5px 15px rgba(0,0,0,0.8); }
-        .front-sight-2d { width: 22px; height: 55px; background: #222; position: absolute; bottom: 12px; display: flex; justify-content: center; padding-top: 5px; border-radius: 3px 3px 0 0; box-shadow: 0 -2px 5px rgba(0,0,0,0.5); z-index: 1; transition: transform 0.03s ease-out; }
+        
+        /* Skåran - 50px hög totalt */
+        .rear-sight-2d { width: 120px; height: 50px; border: 30px solid #1a1a1a; border-top: none; position: absolute; bottom: 0; border-radius: 4px; box-shadow: inset 0 5px 15px rgba(0,0,0,0.8); }
+        
+        /* Kornet - Börjar 10px upp och är 40px högt (10+40=50). Perfekt linjerat med skåran! */
+        .front-sight-2d { width: 24px; height: 40px; background: #222; position: absolute; bottom: 10px; display: flex; justify-content: center; padding-top: 6px; border-radius: 3px 3px 0 0; box-shadow: 0 -2px 5px rgba(0,0,0,0.5); z-index: 1; transition: transform 0.03s ease-out; }
+        
+        /* Den vita pricken är placerad lagom nära toppen av kornet */
         .white-dot-2d { width: 12px; height: 12px; background: #fff; border-radius: 50%; box-shadow: 0 0 5px rgba(255,255,255,0.8); }
     </style>
 </head>
@@ -103,7 +109,7 @@
 
             <div id="feedback-box">
                 <div id="feedback-title">DIAGNOSTIK</div>
-                <div id="feedback-text"><b>STRUKET KORN AKTIVERAT!</b><br>Träffen beräknas nu både på var du siktar (cyan prick) OCH hur väl linjerat ditt korn är i skåran vid avfyrning. Håll handleden stilla!</div>
+                <div id="feedback-text"><b>STRUKET KORN AKTIVERAT!</b><br>Kornet är nu visuellt perfekt linjerat med bakre siktet. Träffen beräknas både på din siktlinje (blå prick) OCH hur väl kornet ligger i skåran.</div>
             </div>
         </div>
 
@@ -185,7 +191,7 @@
             loop2D();
         });
 
-        // --- GYROMATEMATIK ---
+        // --- EXTREMT STABILT GYRO ---
         window.addEventListener('deviceorientation', (e) => {
             if (e.alpha === null) return;
             if (prevAlpha === null) { prevAlpha = e.alpha; prevBeta = e.beta; prevGamma = e.gamma; return; }
@@ -225,7 +231,7 @@
             prevAlpha = e.alpha; prevBeta = e.beta; prevGamma = e.gamma;
         });
 
-        document.getElementById('cal-btn-2d').onclick = () => { rawAimX = 50; rawAimY = 50; aimX = 50; aimY = 50; };
+        document.getElementById('cal-btn-2d').onclick = () => { rawAimX = 50; rawAimY = 50; aimX = 50; aimY = 50; sightOffsetX = 0; sightOffsetY = 0; };
         
         document.getElementById('reset-btn-2d').onclick = () => {
             shots=[]; lastShotRecord = 0;
@@ -270,8 +276,7 @@
             let split = lastShotRecord === 0 ? 0 : (now - lastShotRecord) / 1000;
             lastShotRecord = now;
 
-            // --- NY TRÄFFBERÄKNING (Kombinerar riktning + siktesfel) ---
-            // Om kornet ligger ur skåran, flyttas träffen dramatiskt.
+            // --- TRÄFFBERÄKNING (Kombinerar riktning + siktesfel) ---
             let hitX = aimX + (sightOffsetX * 0.15);
             let hitY = aimY + (sightOffsetY * 0.15);
 
@@ -289,7 +294,7 @@
             // Kolla först om de missade pga struket korn
             if (Math.abs(sightOffsetX) > 20 || Math.abs(sightOffsetY) > 20) {
                 fC="#ff1744"; fT="SIKTESFEL"; 
-                fTxt="Du höll inte struket korn! Kornet måste ligga i skåran (den vita pricken centrerad) annars går skottet snett oavsett var du siktar på tavlan.";
+                fTxt="Du höll inte struket korn! Kornet måste ligga i skåran annars går skottet snett oavsett var du siktar på tavlan.";
             } else {
                 let dx = aimX - 50; let dy = aimY - 50;
                 if (dy > 4 && Math.abs(dx) < 5) { fC="#ff9800"; fT="DIPPAR"; fTxt="Träffen är låg. Du anticiperar rekylen."; } 
