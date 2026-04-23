@@ -2,271 +2,202 @@
 <html lang="sv">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Siktsimulator (Android Edition)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>WebXR Banan-Simulator AR</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap');
-
-        * { box-sizing: border-box; user-select: none; -webkit-touch-callout: none; touch-action: none; }
-        body { 
-            margin: 0; padding: 0; background-color: #0d0d0d; color: #fff; 
-            font-family: 'Roboto', sans-serif; display: flex; height: 100vh; width: 100vw; overflow: hidden;
-        }
-
-        #left-panel {
-            flex: 1; height: 100%; display: flex; flex-direction: column; 
-            align-items: center; justify-content: center; padding: 10px; border-right: 1px solid #333; position: relative;
-        }
-
-        #target-box {
-            width: 70vmin; height: 70vmin; max-width: 400px; max-height: 400px;
-            background: #1a1a1a; border-radius: 50%; display: flex; align-items: center; justify-content: center; position: relative;
-            overflow: hidden; border: 2px solid #333;
-        }
-
-        #target {
-            width: 90%; height: 90%; border-radius: 50%;
-            background: repeating-radial-gradient( circle, #aa0000 0%, #aa0000 10%, #111 10%, #111 20%, #aa0000 20%, #aa0000 30%, #111 30%, #111 40%, #aa0000 40%, #aa0000 50% );
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
-        }
-
-        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-
-        #crosshair {
-            position: absolute; width: 16px; height: 16px; background: cyan; 
-            border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 10px cyan; z-index: 10;
-        }
+        body { margin: 0; padding: 0; overflow: hidden; font-family: sans-serif; }
         
-        .bullet-hole {
-            position: absolute; width: 10px; height: 10px; background: #fff; border-radius: 50%;
-            transform: translate(-50%, -50%); box-shadow: 0 0 5px rgba(255,255,255,0.8); z-index: 5;
+        /* UI Overlay som visas ovanpå AR-kameran */
+        #overlay-ui {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            display: flex;
+            flex-direction: column;
+            pointer-events: none; /* Låter klick passera igenom till AR-scenen */
+            z-index: 10;
         }
 
-        #right-panel { flex: 1; height: 100%; display: flex; flex-direction: column; padding: 20px; justify-content: space-between; overflow-y: auto; }
+        #header { padding: 20px; text-align: center; color: white; background: rgba(0,0,0,0.5); }
+        #scoreBoard { font-size: 24px; font-weight: bold; }
         
-        #debug-log { 
-            background: #000; color: #00ff00; font-family: monospace; font-size: 2vmin; 
-            padding: 10px; border: 1px solid #333; height: 10vmin; overflow-y: auto; margin-bottom: 10px;
+        #footer {
+            margin-top: auto; /* Trycker ner foten */
+            padding: 20px;
+            text-align: center;
+            color: white;
+            background: rgba(0,0,0,0.5);
+            pointer-events: auto; /* Aktivera klick för knappar här */
         }
 
-        h1 { font-size: 5vmin; margin: 0; color: #00ffff; }
-        .stats { background: #222; padding: 10px; border-radius: 5px; font-size: 3vmin; font-weight: bold; margin-bottom: 10px;}
-
-        .btn-group { display: flex; gap: 10px; margin-bottom: 15px; }
-        .toggle-btn {
-            flex: 1; background: #222; color: #aaa; border: 2px solid #444; 
-            padding: 15px 0; font-size: 3vmin; font-weight: bold; border-radius: 6px; cursor: pointer;
-        }
-        .toggle-btn.active { background: #007bff; color: #fff; border-color: #0056b3; }
-
-        .action-btn { width: 100%; padding: 25px; font-size: 4vmin; font-weight: bold; color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 10px; }
-        #start-btn { background: #2e7d32; }
-        #reset-btn { background: #d32f2f; display: none; }
+        #ar-instructions { color: #aaa; font-size: 14px; margin-top: 5px;}
     </style>
 </head>
 <body>
 
-    <div id="left-panel">
-        <div id="target-box">
-            <div id="target"></div>
-            <canvas id="heatmap-canvas"></canvas>
-            <canvas id="trail-canvas"></canvas>
-            <div id="crosshair"></div>
+    <div id="overlay-ui">
+        <div id="header">
+            <div>WebXR AR-Simulator</div>
+            <div id="scoreBoard">Redo (Kräver HTTPS)</div>
+        </div>
+        <div id="footer">
+            <div id="ar-instructions">Sikta med telefonen och tryck på skärmen för att skjuta.</div>
         </div>
     </div>
 
-    <div id="right-panel">
-        <div>
-            <h1 id="status-text">REDO</h1>
-            <div id="debug-log">System laddat (Android)...<br>Klicka START för att aktivera.</div>
+    <script type="module">
+        import * as THREE from 'https://unpkg.com/three@0.150.1/build/three.module.js';
+        import { ARButton } from 'https://unpkg.com/three@0.150.1/examples/jsm/webxr/ARButton.js';
+
+        let camera, scene, renderer, target;
+        let controller;
+        let raycaster;
+        let audioCtx;
+        const scoreBoard = document.getElementById('scoreBoard');
+
+        // Hjälpmatriser för Raycasting
+        const tempMatrix = new THREE.Matrix4();
+        const rayDirection = new THREE.Vector3();
+
+        init();
+        animate();
+
+        function init() {
+            // --- 1. Grundläggande Three.js Setup ---
+            scene = new THREE.Scene();
+
+            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
+
+            // Belysning (krävs för att 3D-objekt ska synas bra)
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(0, 10, 0);
+            scene.add(directionalLight);
+
+            // Renderer med XR aktiverat
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.xr.enabled = true; // VIKTIGT: Aktivera XR
+            document.body.appendChild(renderer.domElement);
+
+            // --- 2. Skapa den virtuella Måltavlan (3D) ---
+            // Vi skapar en platt disc (Cylinder med liten höjd)
+            const geometry = new THREE.CylinderGeometry(0.3, 0.3, 0.02, 32);
+            // Enkel röd färg (byt mot textur senare om du vill)
+            const material = new THREE.MeshStandardMaterial({ color: 0xff3333, metalness: 0.3, roughness: 0.6 });
+            target = new THREE.Mesh(geometry, material);
             
-            <div class="stats">
-                Streak: <span id="streak" style="color:#ff9800">0</span> | 
-                Snitt: <span id="snitt" style="color:#00ffff">0.0</span>
-            </div>
+            // Rotera så framsidan pekar mot kameran
+            target.rotation.x = Math.PI / 2;
+            
+            // Placera den 2 meter framför startpunkten (negativ Z) och 1.5m upp
+            target.position.set(0, 1.5, -2); 
+            scene.add(target);
 
-            <p style="font-size: 2.5vmin; color:#888; margin-bottom:5px;">Riktning:</p>
-            <div class="btn-group">
-                <button class="toggle-btn active" id="btn-sidan" onclick="setMode('sidan')">På Sidan</button>
-                <button class="toggle-btn" id="btn-ovanpa" onclick="setMode('ovanpa')">Ovanpå</button>
-            </div>
-        </div>
+            // --- 3. Lägg till AR-startknappen ---
+            // Vi skickar med vårt UI-overlay så det visas i AR
+            const overlay = document.getElementById('overlay-ui');
+            document.body.appendChild(ARButton.createButton(renderer, { 
+                requiredFeatures: ['hit-test'], // Hit-test behövs om vi vill placera på golvet senare
+                optionalFeatures: ['dom-overlay'],
+                domOverlay: { root: overlay } 
+            }));
 
-        <div>
-            <button class="action-btn" id="start-btn">STARTA SYSTEMET</button>
-            <button class="action-btn" id="reset-btn">KALIBRERA OM SIKTE</button>
-        </div>
-    </div>
+            // --- 4. Setup för Skjutning (Input & Raycasting) ---
+            raycaster = new THREE.Raycaster();
 
-    <script>
-        const UI = {
-            crosshair: document.getElementById('crosshair'),
-            debug: document.getElementById('debug-log'),
-            status: document.getElementById('status-text'),
-            startBtn: document.getElementById('start-btn'),
-            resetBtn: document.getElementById('reset-btn')
-        };
+            // WebXR hanterar input (skärmtryck) via controllers
+            controller = renderer.xr.getController(0);
+            // Registrera 'select' eventet (klick på skärmen)
+            controller.addEventListener('select', onShoot);
+            scene.add(controller);
 
-        let mode = 'sidan', isRunning = false;
-        let startAlpha = null, startBeta = null, startGamma = null;
-        let cx = 50, cy = 50;
-
-        const heatCanvas = document.getElementById('heatmap-canvas');
-        const heatCtx = heatCanvas.getContext('2d');
-        const trailCanvas = document.getElementById('trail-canvas');
-        const trailCtx = trailCanvas.getContext('2d');
-        let hitData = [], trailHistory = [];
-
-        function logDebug(msg) {
-            UI.debug.innerHTML += `> ${msg}<br>`;
-            UI.debug.scrollTop = UI.debug.scrollHeight;
-            console.log(msg);
+            window.addEventListener('resize', onWindowResize);
         }
 
-        window.setMode = (m) => {
-            mode = m; startAlpha = null;
-            document.getElementById('btn-sidan').classList.toggle('active', m === 'sidan');
-            document.getElementById('btn-ovanpa').classList.toggle('active', m === 'ovanpa');
-        };
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
 
-        UI.startBtn.addEventListener('click', async () => {
-            logDebug("Startar sekvens...");
+        // --- 5. Ljudsyntes (Kopia från tidigare) ---
+        function playSyntheticShot() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
             
-            // 1. Gå i helskärm och lås till landskapsläge (Android-magi)
-            try {
-                if (document.documentElement.requestFullscreen) {
-                    await document.documentElement.requestFullscreen();
-                    logDebug("Helskärm aktiverad.");
-                }
-                if (screen.orientation && screen.orientation.lock) {
-                    await screen.orientation.lock("landscape");
-                    logDebug("Låst till liggande läge.");
-                }
-            } catch (err) {
-                logDebug("Skärmlåsning ignorerades (rotera telefonen manuellt).");
-            }
+            const bufferSize = audioCtx.sampleRate * 0.3; // 0.3 sekunder
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) { data[i] = Math.random() * 2 - 1; }
 
-            // 2. Sätt upp canvas för spår och heatmap
-            setTimeout(() => {
-                const rect = heatCanvas.parentElement.getBoundingClientRect();
-                heatCanvas.width = rect.width; heatCanvas.height = rect.height;
-                trailCanvas.width = rect.width; trailCanvas.height = rect.height;
-                logDebug("Grafikmotor redo.");
-            }, 500); // Liten delay för att låta helskärmen expandera först
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
 
-            // 3. Starta gyro-lyssnare (Android kräver ingen requestPermission)
-            window.addEventListener('deviceorientation', handleOrientation);
-            logDebug("Gyroskop anslutet.");
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(1000, audioCtx.currentTime);
+            filter.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
+
+            const gainNode = audioCtx.createGain();
+            gainNode.gain.setValueAtTime(0.8, audioCtx.currentTime); // Lite lägre volym
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+
+            noise.connect(filter);
+            filter.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            noise.start();
+            noise.stop(audioCtx.currentTime + 0.15);
+        }
+
+        // --- 6. Skjut-logik (Raycasting i 3D) ---
+        function onShoot() {
+            playSyntheticShot(); // Spela ljud direkt
+
+            // WebXR 'select'-eventet garanterar en giltig rörelse-gesture,
+            // så vi kan starta AudioContext här.
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+
+            // Uppdatera Raycaster baserat på telefonens (kontrollerns) position och riktning
+            tempMatrix.extractRotation(controller.matrixWorld);
+            rayDirection.set(0, 0, -1).applyMatrix4(tempMatrix); // "Framåt" är negativ Z
             
-            requestAnimationFrame(renderTrail);
-            
-            isRunning = true;
-            UI.startBtn.style.display = 'none';
-            UI.resetBtn.style.display = 'block';
-            UI.status.innerText = "AKTIV";
-            UI.status.style.color = "#00e676";
-        });
+            raycaster.set(controller.position, rayDirection);
 
-        UI.resetBtn.onclick = () => { startAlpha = null; logDebug("Sikte omkalibrerat."); };
+            // Beräkna om vi krockar med måltavlan
+            const intersects = raycaster.intersectObject(target);
 
-        function handleOrientation(event) {
-            if (!isRunning) return;
-            
-            // Om Pixeln returnerar null är sensorn blockerad eller vi är i en webview
-            if (event.alpha === null) {
-                if(Math.random() < 0.05) logDebug("Får ingen data. Sensorn blockerad?");
-                return;
-            }
+            if (intersects.length > 0) {
+                // TRÄFF!
+                scoreBoard.innerText = "TRÄFF!";
+                scoreBoard.style.color = "#4CAF50"; // Grön
+                
+                // Enkel visuell feedback: Gör tavlan grön en kort stund
+                target.material.color.setHex(0x00ff00);
+                setTimeout(() => { target.material.color.setHex(0xff3333); }, 200);
 
-            if (startAlpha === null) {
-                startAlpha = event.alpha; startBeta = event.beta; startGamma = event.gamma;
-            }
-
-            let deltaX = 0, deltaY = 0;
-            if (mode === 'sidan') {
-                deltaX = event.alpha - startAlpha; 
-                deltaY = event.beta - startBeta;
             } else {
-                deltaX = event.gamma - startGamma; 
-                deltaY = event.beta - startBeta;
+                // BOM!
+                scoreBoard.innerText = "BOM!";
+                scoreBoard.style.color = "#f44336"; // Röd
             }
-
-            if (deltaX > 180) deltaX -= 360; if (deltaX < -180) deltaX += 360;
-
-            // Känslighet (öka siffran för känsligare sikte)
-            cx = 50 - (deltaX * 3); cy = 50 - (deltaY * 3);
-            
-            // Spärra siktet så det stannar på skärmen
-            cx = Math.max(0, Math.min(100, cx)); cy = Math.max(0, Math.min(100, cy));
-
-            UI.crosshair.style.left = cx + "%"; UI.crosshair.style.top = cy + "%";
         }
 
-        // Skjut genom att trycka någonstans på skärmen
-        document.body.addEventListener('pointerdown', (e) => {
-            if (isRunning && e.target.tagName !== "BUTTON") fireShot();
-        });
-
-        let totalScore = 0, totalShots = 0, streak = 0;
-
-        function fireShot() {
-            if (!isRunning) return;
-            
-            // Rekyl-blixt
-            document.body.style.backgroundColor = "#555";
-            setTimeout(() => { document.body.style.backgroundColor = "#0d0d0d"; }, 50);
-
-            // Skotthål
-            const hole = document.createElement('div');
-            hole.className = 'bullet-hole';
-            hole.style.left = cx + "%"; hole.style.top = cy + "%";
-            document.getElementById('target-box').appendChild(hole);
-
-            hitData.push({x: cx, y: cy}); drawHeatmap();
-            
-            // Simulerad fysisk rekyl (siktet hoppar upp)
-            startBeta -= 3; 
-
-            const dist = Math.sqrt(Math.pow(cx - 50, 2) + Math.pow(cy - 50, 2));
-            let points = 0;
-            if (dist < 8) points = 10; else if (dist < 18) points = 8; else if (dist < 28) points = 6; else if (dist < 38) points = 4; else if (dist < 48) points = 2;
-
-            if (points > 0) { streak++; UI.status.innerText = `TRÄFF! (${points}p)`; UI.status.style.color = "#00e676"; } 
-            else { streak = 0; UI.status.innerText = "BOM!"; UI.status.style.color = "#ff1744"; }
-
-            totalShots++; totalScore += points;
-            document.getElementById('streak').innerText = streak;
-            document.getElementById('snitt').innerText = (totalScore / totalShots).toFixed(1);
+        // --- 7. Animations-loop (VIKTIGT för WebXR) ---
+        function animate() {
+            // I WebXR måste vi använda renderer.setAnimationLoop, inte requestAnimationFrame
+            renderer.setAnimationLoop(render);
         }
 
-        function renderTrail() {
-            if (!isRunning) return;
-            trailHistory.push({ x: cx, y: cy });
-            if (trailHistory.length > 25) trailHistory.shift();
-
-            trailCtx.clearRect(0, 0, trailCanvas.width, trailCanvas.height);
-            if (trailHistory.length > 1) {
-                const w = trailCanvas.width, h = trailCanvas.height;
-                for (let i = 0; i < trailHistory.length - 1; i++) {
-                    trailCtx.beginPath();
-                    trailCtx.moveTo((trailHistory[i].x / 100) * w, (trailHistory[i].y / 100) * h);
-                    trailCtx.lineTo((trailHistory[i+1].x / 100) * w, (trailHistory[i+1].y / 100) * h);
-                    trailCtx.strokeStyle = `rgba(0, 255, 255, ${(i / trailHistory.length) * 0.8})`;
-                    trailCtx.lineWidth = 3; trailCtx.stroke();
-                }
+        function render(timestamp, frame) {
+            // Om vi är i en AR-session, rotera tavlan sakta
+            if (renderer.xr.isPresenting) {
+                 target.rotation.z += 0.005; // Snurrar tavlan
             }
-            requestAnimationFrame(renderTrail);
-        }
-
-        function drawHeatmap() {
-            heatCtx.clearRect(0, 0, heatCanvas.width, heatCanvas.height);
-            const w = heatCanvas.width, h = heatCanvas.height, radius = w * 0.12;
-            hitData.forEach(hit => {
-                const x = (hit.x / 100) * w, y = (hit.y / 100) * h;
-                const gradient = heatCtx.createRadialGradient(x, y, 0, x, y, radius);
-                gradient.addColorStop(0, 'rgba(255, 255, 0, 0.8)'); gradient.addColorStop(0.4, 'rgba(255, 0, 0, 0.4)'); gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
-                heatCtx.fillStyle = gradient; heatCtx.beginPath(); heatCtx.arc(x, y, radius, 0, Math.PI * 2); heatCtx.fill();
-            });
+            renderer.render(scene, camera);
         }
     </script>
 </body>
