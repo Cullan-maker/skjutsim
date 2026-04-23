@@ -21,7 +21,6 @@
         .controls-col { grid-column: 1; grid-row: 1 / span 2; justify-content: space-between;}
         .controls-col h2 { font-size: 16px; color: #00ffff; margin: 0 0 10px 0; display: flex; justify-content: space-between; align-items: center;}
         
-        /* Mic Indikator (Röd = Av, Grön = Redo, Orange = Cooldown) */
         .mic-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: red; margin-left: 10px; box-shadow: 0 0 5px red;}
         .mic-dot.active { background: #00ff00; box-shadow: 0 0 5px #00ff00; }
         .mic-dot.cooldown { background: #ff9800; box-shadow: 0 0 5px #ff9800; }
@@ -29,11 +28,11 @@
         .stat-row { display: flex; justify-content: space-between; color: #aaa; font-size: 14px; font-weight: bold; margin-bottom: 5px; }
         .stat-row span { color: #fff; }
         
-        .input-group { margin-bottom: 10px; background: rgba(0,0,0,0.3); padding: 5px; border-radius: 5px; border: 1px solid #333;}
-        .input-group label { font-size: 10px; color: #888; text-transform: uppercase; font-weight: bold; display: block; margin-bottom: 5px;}
-        .input-group select { width: 100%; padding: 8px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 4px; font-size: 12px; margin-bottom: 5px;}
+        .input-group { margin-bottom: 5px; background: rgba(0,0,0,0.3); padding: 5px; border-radius: 5px; border: 1px solid #333;}
+        .input-group label { font-size: 10px; color: #888; text-transform: uppercase; font-weight: bold; display: flex; justify-content: space-between; margin-bottom: 5px;}
+        .input-group select, .input-group input[type="range"] { width: 100%; padding: 6px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 4px; font-size: 12px; margin-bottom: 2px;}
         
-        .checkbox-row { display: flex; justify-content: space-between; font-size: 11px; color: #ccc;}
+        .checkbox-row { display: flex; justify-content: space-between; font-size: 11px; color: #ccc; margin-top: 5px;}
         .checkbox-row label { display: flex; align-items: center; gap: 5px; cursor: pointer; text-transform: none; color: #fff;}
 
         .btn-row { display: flex; gap: 5px; margin-top: 5px;}
@@ -74,13 +73,18 @@
             <div class="input-group">
                 <label>Telefonens Montering</label>
                 <select id="mount-select">
-                    <option value="top">Ovanpå (Skärmen mot dig)</option>
-                    <option value="side">På sidan (Skärmen pekar utåt)</option>
+                    <option value="top">Ovanpå (Skärmen uppåt)</option>
+                    <option value="side">På sidan (Skärmen åt sidan)</option>
                 </select>
                 <div class="checkbox-row">
-                    <label><input type="checkbox" id="inv-x"> Invertera X (Sida)</label>
-                    <label><input type="checkbox" id="inv-y"> Invertera Y (Höjd)</label>
+                    <label><input type="checkbox" id="inv-x"> Invert X</label>
+                    <label><input type="checkbox" id="inv-y"> Invert Y</label>
                 </div>
+            </div>
+
+            <div class="input-group">
+                <label><span>Vapnets Tröghet (Vikt)</span></label>
+                <input type="range" id="inertia-slider" min="0.01" max="0.3" step="0.01" value="0.06">
             </div>
 
             <div class="btn-row">
@@ -90,7 +94,7 @@
 
             <div id="feedback-box">
                 <div id="feedback-title">DIAGNOSTIK</div>
-                <div id="feedback-text">Centrera siktet genom att hålla vapnet mot tavlan och klicka "Centrera Sikte".<br><br>Mic-indikatorn är <b>orange</b> när vapnet laddas om (2,5s cooldown) och <b>grön</b> när du kan skjuta.</div>
+                <div id="feedback-text">Kalibrera siktet.<br><br>Justera <b>Vapnets Tröghet</b>. Lågt värde = tungt och extremt stabilt vapen. Högt värde = snabbt och skakigt.<br><br>Cooldown: 2,5s.</div>
             </div>
         </div>
 
@@ -120,7 +124,7 @@
         let rawAimX = 50, rawAimY = 50, aimX = 50, aimY = 50;
         let trace = [], ekg = new Array(200).fill(50), shots = [];
         
-        let prevAlpha = null, prevBeta = null, prevGamma = null;
+        let calAlpha = null, calBeta = null, calGamma = null;
         let lastTriggerTime = 0, lastShotRecord = 0;
         const cooldownTime = 2500; // 2.5 sekunder!
 
@@ -161,56 +165,46 @@
             loop2D();
         });
 
-        // --- RELATIVT GYRO (Eliminerar teleportering och Gimbal Lock) ---
+        // --- STABILT GYRO (Absolut position istället för drift) ---
         window.addEventListener('deviceorientation', (e) => {
             if(!e.alpha) return;
             
-            if(prevAlpha === null) { 
-                prevAlpha = e.alpha; prevBeta = e.beta; prevGamma = e.gamma; 
+            // Sätt kalibreringspunkt
+            if(calAlpha === null) { 
+                calAlpha = e.alpha; calBeta = e.beta; calGamma = e.gamma; 
                 return; 
             }
             
-            let dAlpha = e.alpha - prevAlpha; 
-            let dBeta = e.beta - prevBeta;
-            let dGamma = e.gamma - prevGamma; 
+            // Räkna ut kortaste vinkeln till vår nollpunkt för att undvika 360-wraps (Gimbal lock)
+            let dx = e.alpha - calAlpha;
+            let dy = e.gamma - calGamma;
+            let dz = e.beta - calBeta;
             
-            // Korrigera ifall axlarna slår över 360-gränsen
-            if (dAlpha > 180) dAlpha -= 360; else if (dAlpha < -180) dAlpha += 360;
-            if (dBeta > 180) dBeta -= 360; else if (dBeta < -180) dBeta += 360;
-            if (dGamma > 90) dGamma -= 180; else if (dGamma < -90) dGamma += 180; // Gamma slår över vid 90
-            
-            prevAlpha = e.alpha; prevBeta = e.beta; prevGamma = e.gamma;
-
-            // Ignorera extrema spikar (om telefonen flippar ur sensormässigt)
-            if (Math.abs(dAlpha) > 30 || Math.abs(dBeta) > 30 || Math.abs(dGamma) > 30) return;
+            if (dx > 180) dx -= 360; else if (dx < -180) dx += 360;
+            if (dy > 180) dy -= 360; else if (dy < -180) dy += 360;
+            if (dz > 180) dz -= 360; else if (dz < -180) dz += 360;
 
             const mount = document.getElementById('mount-select').value;
             const invX = document.getElementById('inv-x').checked ? -1 : 1;
             const invY = document.getElementById('inv-y').checked ? -1 : 1;
             
-            let moveX = 0, moveY = 0;
-            const sensitivity = 3.0;
+            let targetX = 50, targetY = 50;
+            const sensitivity = 2.0; // Sänkt känslighet för mer stabil grund
 
+            // Räkna ut målkoordinaten
             if (mount === 'top') {
-                // Standard: Skärmen ovanpå vapnet
-                moveX = dAlpha;
-                moveY = dGamma; // Luta telefonen fram/bak
+                targetX = 50 - (dx * sensitivity * invX);
+                targetY = 50 - (dy * sensitivity * invY);
             } else {
-                // På sidan: Skärmen åt sidan
-                moveX = dGamma; 
-                moveY = dAlpha; 
+                targetX = 50 - (dz * sensitivity * invX);
+                targetY = 50 - (dx * sensitivity * invY);
             }
 
-            // Applicera rörelsen med eventuell invertering
-            rawAimX -= (moveX * sensitivity * invX);
-            rawAimY -= (moveY * sensitivity * invY);
-
-            // Begränsa så siktet inte flyger i all oändlighet utanför skärmen
-            rawAimX = Math.max(-50, Math.min(150, rawAimX));
-            rawAimY = Math.max(-50, Math.min(150, rawAimY));
+            rawAimX = targetX;
+            rawAimY = targetY;
         });
 
-        document.getElementById('cal-btn-2d').onclick = () => { rawAimX = 50; rawAimY = 50; aimX = 50; aimY = 50; };
+        document.getElementById('cal-btn-2d').onclick = () => { calAlpha = null; rawAimX = 50; rawAimY = 50; aimX = 50; aimY = 50; };
         
         document.getElementById('reset-btn-2d').onclick = () => {
             shots=[]; lastShotRecord = 0;
@@ -249,6 +243,7 @@
             let split = lastShotRecord === 0 ? 0 : (now - lastShotRecord) / 1000;
             lastShotRecord = now;
 
+            // Beräkna poäng från mitten
             let pts = 10 - Math.floor(Math.sqrt(Math.pow(aimX-50,2) + Math.pow(aimY-50,2))/4.5);
             if(pts<0) pts=0; shots.push({x:aimX, y:aimY, pts});
             
@@ -274,8 +269,12 @@
         }
 
         function loop2D() {
-            // Mjuk uppdatering av siktet (Lerp)
-            aimX += (rawAimX - aimX) * 0.3; aimY += (rawAimY - aimY) * 0.3;
+            // Hämta trögheten från slidern! Lågt värde (0.01) = jättetrög, Högt (0.3) = skakig
+            const inertia = parseFloat(document.getElementById('inertia-slider').value);
+            
+            // Fysisk interpolation (Mjukar upp sensorbruset markant)
+            aimX += (rawAimX - aimX) * inertia; 
+            aimY += (rawAimY - aimY) * inertia;
             
             trace.push({x:aimX, y:aimY}); if(trace.length>30) trace.shift();
             ekg.push(aimY); if(ekg.length>200) ekg.shift();
