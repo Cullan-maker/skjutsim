@@ -3,110 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, orientation=landscape">
-    <title>Glock 45 AR Simulator</title>
+    <title>MantisX Web AR Klon</title>
     <style>
-        body { margin: 0; padding: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif; background: #000; }
+        body { margin: 0; padding: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif; background: #111; color: #fff;}
         
         #overlay-ui {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             display: flex; flex-direction: column; pointer-events: none; z-index: 10;
         }
 
-        /* Topp-panel */
         #header { 
-            padding: 10px 20px; background: linear-gradient(rgba(0,0,0,0.8), transparent); 
-            display: flex; justify-content: space-between; align-items: flex-start; pointer-events: auto; color: white;
+            padding: 10px 20px; background: linear-gradient(rgba(0,0,0,0.9), transparent); 
+            display: flex; justify-content: space-between; align-items: flex-start; pointer-events: auto;
         }
         
-        #stats { text-align: left; font-size: 16px; font-weight: bold; text-shadow: 1px 1px 2px #000; }
+        .stat-box { background: rgba(0,0,0,0.6); padding: 5px 10px; border-radius: 5px; font-size: 14px; margin-bottom: 5px; border-left: 3px solid #555;}
+        .stat-box span { font-weight: bold; font-size: 18px; }
+        
         #scoreBoard { font-size: 28px; font-weight: 900; color: #00ffff; text-shadow: 2px 2px 4px #000; text-align: center; flex-grow: 1;}
 
         .controls { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
         
-        /* Slider för avstånd */
-        .slider-container { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 8px;}
-        input[type=range] { width: 150px; }
-        #dist-label { font-weight: bold; width: 45px; text-align: right; }
-
-        button {
+        button.action-btn {
             background: #2e7d32; color: #fff; border: 2px solid #1b5e20; padding: 10px 15px;
-            font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 0 #1b5e20;
+            font-size: 14px; font-weight: bold; border-radius: 5px; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 0 #1b5e20; pointer-events: auto;
         }
-        button:active { transform: translateY(4px); box-shadow: 0 0 0 #1b5e20; }
-        #clear-btn { background: #d32f2f; border-color: #b71c1c; box-shadow: 0 4px 0 #b71c1c; }
-        #clear-btn:active { box-shadow: 0 0 0 #b71c1c; }
-
-        /* Vapensiktet (Glock 45 Iron Sights) 2D Overlay */
+        button.action-btn:active { transform: translateY(4px); box-shadow: 0 0 0 #1b5e20; }
+        #place-btn { background: #ff9800; border-color: #e65100; box-shadow: 0 4px 0 #e65100; font-size: 18px; padding: 15px 25px; display: none; margin: auto;}
+        
+        /* Glock Sikte (2D Overlay) */
         #glock-sight {
             position: absolute; bottom: 5%; left: 50%; transform: translateX(-50%);
             width: 300px; height: 150px; pointer-events: none;
             display: flex; justify-content: center; align-items: flex-end;
         }
-        /* Bakre siktet (skåran) */
         .rear-sight {
             width: 180px; height: 70px; border: 35px solid #1a1a1a; border-top: none;
             position: absolute; bottom: 0; border-radius: 4px; box-shadow: inset 0 5px 15px rgba(0,0,0,0.8);
         }
-        /* Främre siktet (stolpen) */
         .front-sight {
             width: 30px; height: 80px; background: #222; position: absolute; bottom: 20px;
-            display: flex; justify-content: center; padding-top: 10px; border-radius: 3px 3px 0 0;
-            box-shadow: 0 -2px 5px rgba(0,0,0,0.5);
+            display: flex; justify-content: center; padding-top: 10px; border-radius: 3px 3px 0 0; box-shadow: 0 -2px 5px rgba(0,0,0,0.5);
         }
-        /* Vita pricken */
-        .white-dot {
-            width: 16px; height: 16px; background: #fff; border-radius: 50%;
-            box-shadow: 0 0 5px rgba(255,255,255,0.8);
-        }
+        .white-dot { width: 16px; height: 16px; background: #fff; border-radius: 50%; box-shadow: 0 0 5px rgba(255,255,255,0.8); }
 
-        /* Start-skärm för att tillåta mikrofon och AR */
-        #start-screen {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #0d0d0d; z-index: 100; display: flex; flex-direction: column;
-            justify-content: center; align-items: center; padding: 20px; text-align: center; pointer-events: auto;
-        }
-        #start-screen h1 { color: #00ffff; }
-        #start-screen p { color: #aaa; margin-bottom: 30px; }
-        #btn-start-system { font-size: 24px; padding: 20px 40px; }
+        #audio-status { position: absolute; bottom: 10px; left: 10px; font-size: 12px; color: #ffeb3b; background: rgba(0,0,0,0.5); padding: 5px; border-radius: 5px;}
         
-        #audio-status {
-            position: absolute; bottom: 10px; left: 10px; font-size: 12px; color: #ffeb3b;
-        }
-
+        /* Three.js ARButton styles overrides */
+        #ARButton { bottom: 20px !important; padding: 15px 20px !important; font-size: 18px !important; font-weight: bold; background: #2e7d32 !important; border-radius: 8px !important;}
     </style>
 </head>
 <body>
 
-    <div id="start-screen">
-        <h1>Glock 45 Simulator</h1>
-        <p>Montera mobilen på attrappen.<br>Simulatorn lyssnar efter avtryckarens klick.</p>
-        <button id="btn-start-system">AKTIVERA SYSTEM</button>
-    </div>
-
     <div id="overlay-ui" style="display:none;">
         <div id="header">
-            <div id="stats">
-                TRÄFFAR: <span id="hit-count" style="color:#00ff00;">0</span><br>
-                POÄNG: <span id="total-score" style="color:#00ffff;">0</span>
+            <div>
+                <div class="stat-box" style="border-color: #00ff00;">Träffar: <span id="hit-count">0</span></div>
+                <div class="stat-box" style="border-color: #00ffff;">Poäng: <span id="total-score">0</span></div>
+                <div class="stat-box" style="border-color: #ff9800;">Stabilitet: <span id="stability-score">--</span>%</div>
             </div>
             
-            <div id="scoreBoard">REDO</div>
+            <div id="scoreBoard">SKANNA RUMMET</div>
             
             <div class="controls">
-                <div class="slider-container">
-                    <span style="font-size: 12px; color:#aaa;">Avstånd:</span>
-                    <input type="range" id="dist-slider" min="5" max="25" step="1" value="10">
-                    <span id="dist-label">10m</span>
-                </div>
-                <button id="clear-btn">Rensa Tavla</button>
+                <button id="clear-btn" class="action-btn" style="background: #d32f2f; border-color: #b71c1c; box-shadow: 0 4px 0 #b71c1c;">Rensa Tavla</button>
+                <button id="move-btn" class="action-btn">Flytta Tavla</button>
             </div>
         </div>
 
+        <button id="place-btn" class="action-btn">FÄST TAVLA HÄR</button>
+
         <div id="glock-sight">
             <div class="rear-sight"></div>
-            <div class="front-sight">
-                <div class="white-dot"></div>
-            </div>
+            <div class="front-sight"><div class="white-dot"></div></div>
         </div>
         
         <div id="audio-status">Mic: VÄNTAR...</div>
@@ -114,36 +83,96 @@
 
     <script type="module">
         import * as THREE from 'https://unpkg.com/three@0.150.1/build/three.module.js';
+        import { ARButton } from 'https://unpkg.com/three@0.150.1/examples/jsm/webxr/ARButton.js';
 
         let camera, scene, renderer, target, targetDecals;
-        let xrSession = null;
-        let hits = 0;
-        let totalScore = 0;
+        let reticle, hitTestSource = null, hitTestSourceRequested = false;
+        let placingMode = true;
 
-        // Ljudvariabler
+        let hits = 0; let totalScore = 0;
+
+        // Ljud & Accelerometer
         let audioContext, analyser, dataArray;
         let lastShotTime = 0;
-        const cooldownTime = 800; // 0.8 sekunder tystnad vid omladdning
+        let accelBuffer = []; // Sparar rörelsedata
 
-        // DOM Element
         const scoreBoard = document.getElementById('scoreBoard');
-        const distSlider = document.getElementById('dist-slider');
-        const distLabel = document.getElementById('dist-label');
         const audioStatus = document.getElementById('audio-status');
-        
+        const placeBtn = document.getElementById('place-btn');
         const raycaster = new THREE.Raycaster();
-        // Vi siktar alltid från mitten av skärmen (där vår 2D-prick är)
         const screenCenter = new THREE.Vector2(0, 0); 
 
-        // --- START-SEKVENS ---
-        document.getElementById('btn-start-system').addEventListener('click', async () => {
-            // 1. Försök låsa till liggande läge (Landscape)
-            try {
-                if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
-                if (screen.orientation && screen.orientation.lock) await screen.orientation.lock("landscape");
-            } catch (err) { console.warn("Kunde inte låsa skärmrotation:", err); }
+        init();
 
-            // 2. Starta mikrofon
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 50);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.xr.enabled = true;
+            document.body.appendChild(renderer.domElement);
+
+            // Skapa AR-knapp med Hit-Test (Kräver ARCore)
+            const overlay = document.getElementById('overlay-ui');
+            const arBtn = ARButton.createButton(renderer, { 
+                requiredFeatures: ['hit-test'], 
+                optionalFeatures: ['dom-overlay'], 
+                domOverlay: { root: overlay } 
+            });
+            document.body.appendChild(arBtn);
+
+            // Starta system (Mic & Accelerometer) när AR startar
+            arBtn.addEventListener('click', startSensors);
+
+            createTarget();
+            createReticle();
+
+            document.getElementById('clear-btn').addEventListener('click', clearTarget);
+            document.getElementById('move-btn').addEventListener('click', () => {
+                target.visible = false;
+                placingMode = true;
+                scoreBoard.innerText = "SKANNA RUMMET";
+            });
+
+            placeBtn.addEventListener('click', () => {
+                if (reticle.visible) {
+                    target.position.setFromMatrixPosition(reticle.matrix);
+                    target.quaternion.setFromRotationMatrix(reticle.matrix);
+                    // Rotera tavlan så den står upp mot användaren
+                    target.rotateX(Math.PI / 2);
+                    
+                    target.visible = true;
+                    placingMode = false;
+                    placeBtn.style.display = 'none';
+                    scoreBoard.innerText = "REDO ATT SKJUTA";
+                }
+            });
+
+            window.addEventListener('resize', onWindowResize);
+            renderer.setAnimationLoop(render);
+        }
+
+        async function startSensors() {
+            document.getElementById('overlay-ui').style.display = 'flex';
+            
+            // Accelerometer (För Flinch/Mantis-analys)
+            window.addEventListener('devicemotion', (event) => {
+                if(event.acceleration) {
+                    accelBuffer.push({
+                        x: event.acceleration.x || 0,
+                        y: event.acceleration.y || 0,
+                        z: event.acceleration.z || 0,
+                        t: Date.now()
+                    });
+                    // Behåll endast de senaste ~1000 millisekunderna (ca 60 frames)
+                    if(accelBuffer.length > 60) accelBuffer.shift();
+                }
+            });
+
+            // Mikrofon
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -152,62 +181,9 @@
                 source.connect(analyser);
                 dataArray = new Uint8Array(analyser.frequencyBinCount);
                 listenForTrigger();
-                audioStatus.innerText = "Mic: AKTIV";
-                audioStatus.style.color = "#00e676";
+                audioStatus.innerText = "Mic: AKTIV"; audioStatus.style.color = "#00e676";
             } catch(e) {
-                audioStatus.innerText = "Mic: NEKAD/FEL";
-                audioStatus.style.color = "#ff1744";
-                alert("Mikrofonen måste tillåtas för att avtryckaren ska fungera!");
-            }
-
-            // 3. Göm startskärm, visa UI och starta 3D
-            document.getElementById('start-screen').style.display = 'none';
-            document.getElementById('overlay-ui').style.display = 'flex';
-            
-            init3D();
-            startAR();
-        });
-
-        function init3D() {
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 50);
-
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-            scene.add(ambientLight);
-            
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.xr.enabled = true;
-            document.body.appendChild(renderer.domElement);
-
-            createTarget();
-
-            // UI Listeners för avstånd och rensning
-            distSlider.addEventListener('input', (e) => {
-                const dist = parseFloat(e.target.value);
-                distLabel.innerText = dist + "m";
-                target.position.set(0, 1.5, -dist); // Flytta tavlan
-            });
-
-            document.getElementById('clear-btn').addEventListener('click', () => {
-                while(targetDecals.children.length > 0){ targetDecals.remove(targetDecals.children[0]); }
-                hits = 0; totalScore = 0; updateStats();
-                scoreBoard.innerText = "TAVLA RENSAD";
-                scoreBoard.style.color = "#aaa";
-            });
-
-            window.addEventListener('resize', onWindowResize);
-            renderer.setAnimationLoop(render);
-        }
-
-        async function startAR() {
-            if (navigator.xr) {
-                const sessionInit = { optionalFeatures: ['dom-overlay'], domOverlay: { root: document.getElementById('overlay-ui') } };
-                navigator.xr.requestSession('immersive-ar', sessionInit).then((session) => {
-                    renderer.xr.setSession(session);
-                    xrSession = session;
-                }).catch(err => alert("WebXR (AR) stöds inte eller nekades."));
+                audioStatus.innerText = "Mic: NEKAD"; audioStatus.style.color = "#ff1744";
             }
         }
 
@@ -215,108 +191,115 @@
             const canvas = document.createElement('canvas');
             canvas.width = 1024; canvas.height = 1024;
             const ctx = canvas.getContext('2d');
-            const cx = 512, cy = 512;
             
-            ctx.fillStyle = '#ffebce'; ctx.fillRect(0, 0, 1024, 1024);
-            const rings = 10; const maxRadius = 450; const ringStep = maxRadius / rings;
-            ctx.lineWidth = 4;
+            // Bättre papperstextur/färg
+            ctx.fillStyle = '#e3dac9'; ctx.fillRect(0, 0, 1024, 1024);
+            const cx = 512, cy = 512, rings = 10, maxRadius = 450, ringStep = maxRadius / rings;
             
+            ctx.lineWidth = 5;
             for (let i = 1; i <= rings; i++) {
                 const radius = maxRadius - (i - 1) * ringStep;
                 ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-                if (i > 6) { ctx.fillStyle = '#111'; ctx.fill(); ctx.strokeStyle = '#eee'; ctx.stroke(); } 
-                else { ctx.strokeStyle = '#111'; ctx.stroke(); }
+                if (i > 6) { ctx.fillStyle = '#111'; ctx.fill(); ctx.strokeStyle = '#eee'; } 
+                else { ctx.strokeStyle = '#111'; }
+                ctx.stroke();
             }
-            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.moveTo(cx - 20, cy); ctx.lineTo(cx + 20, cy); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(cx, cy - 20); ctx.lineTo(cx, cy + 20); ctx.stroke();
-
+            
             const texture = new THREE.CanvasTexture(canvas);
-            const geometry = new THREE.PlaneGeometry(0.5, 0.5); // 50x50 cm i verkligheten
+            const geometry = new THREE.PlaneGeometry(0.5, 0.5); // 50x50 cm
             const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
             target = new THREE.Mesh(geometry, material);
-            
-            target.position.set(0, 1.5, -10); // Standard 10 meter bort, 1.5m upp
+            target.visible = false; // Gömd tills placerad
             scene.add(target);
 
             targetDecals = new THREE.Group();
             target.add(targetDecals);
         }
 
-        // --- LJUD-AVTRYCKARE (MICROPHONE) ---
+        function createReticle() {
+            // Siktet som visar var tavlan hamnar på väggen/golvet
+            const geometry = new THREE.RingGeometry(0.1, 0.12, 32).rotateX(-Math.PI / 2);
+            const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+            reticle = new THREE.Mesh(geometry, material);
+            reticle.matrixAutoUpdate = false;
+            reticle.visible = false;
+            scene.add(reticle);
+        }
+
         function listenForTrigger() {
             requestAnimationFrame(listenForTrigger);
-            if (!audioContext || !analyser) return;
+            if (!audioContext || placingMode) return; // Skjut inte i placeringsläge
 
             analyser.getByteFrequencyData(dataArray);
-            let maxVolume = Math.max(...dataArray);
-
-            const now = Date.now();
-            // Tröskelvärde (maxVolume > 150) - kan behöva justeras beroende på hur högt din attrapp klickar
-            if (maxVolume > 150 && (now - lastShotTime) > cooldownTime) {
-                lastShotTime = now;
+            if (Math.max(...dataArray) > 150 && (Date.now() - lastShotTime) > 800) {
+                lastShotTime = Date.now();
+                analyzeFlinch(); // Mantis-analysen!
                 fireShot();
             }
         }
 
-        // Syntetiskt skottljud för feedback
-        function playFeedbackSound() {
-            if (!audioContext) return;
-            const osc = audioContext.createOscillator();
-            const gain = audioContext.createGain();
-            osc.connect(gain); gain.connect(audioContext.destination);
-            osc.type = 'square';
-            osc.frequency.setValueAtTime(150, audioContext.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
-            gain.gain.setValueAtTime(0.5, audioContext.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
-            osc.start(); osc.stop(audioContext.currentTime + 0.2);
+        function analyzeFlinch() {
+            if(accelBuffer.length < 10) return; // För lite data
+
+            // Vi tittar på de sista 0.5 sekunderna innan skottet
+            let recent = accelBuffer.filter(d => (Date.now() - d.t) < 500);
+            if(recent.length === 0) recent = accelBuffer;
+
+            // Beräkna hur mycket telefonen accelererade (skakade/ryckte)
+            let maxAccel = 0;
+            recent.forEach(d => {
+                let mag = Math.sqrt(d.x*d.x + d.y*d.y + d.z*d.z);
+                if(mag > maxAccel) maxAccel = mag;
+            });
+
+            // Konvertera till 0-100 poäng. (Grov formel: 0 rörelse = 100, mycket rörelse = lägre)
+            // En vanlig handskakning ger lite utslag, ett ryck ger stort.
+            let stability = 100 - (maxAccel * 15);
+            if (stability > 100) stability = 100;
+            if (stability < 0) stability = 0;
+
+            const stabEl = document.getElementById('stability-score');
+            stabEl.innerText = stability.toFixed(1);
+            stabEl.parentElement.style.borderColor = stability > 90 ? "#00ff00" : (stability > 75 ? "#ff9800" : "#ff1744");
         }
 
-        // --- SKJUT-LOGIK ---
         function fireShot() {
-            if (!renderer.xr.isPresenting) return; // Skjut bara om AR är igång
-            
-            playFeedbackSound();
-            
-            // Blink-effekt på siktet
             const dot = document.querySelector('.white-dot');
-            dot.style.background = "red";
-            dot.style.boxShadow = "0 0 10px red";
-            setTimeout(() => { dot.style.background = "#fff"; dot.style.boxShadow = "0 0 5px rgba(255,255,255,0.8)"; }, 100);
+            dot.style.background = "red"; setTimeout(() => dot.style.background = "#fff", 100);
 
-            // Skjut raycaster rakt ut från kamerans centrum (genom 2D-siktet)
             raycaster.setFromCamera(screenCenter, camera);
             const intersects = raycaster.intersectObject(target);
 
             if (intersects.length > 0) {
-                const hitPoint = intersects[0].point;
-                const localHit = target.worldToLocal(hitPoint.clone());
+                const localHit = target.worldToLocal(intersects[0].point.clone());
                 
-                const holeGeo = new THREE.CircleGeometry(0.004, 16);
+                const holeGeo = new THREE.CircleGeometry(0.005, 16);
                 const holeMat = new THREE.MeshBasicMaterial({ color: 0x111111, depthTest: false });
                 const bulletHole = new THREE.Mesh(holeGeo, holeMat);
                 bulletHole.position.set(localHit.x, localHit.y, 0.001);
                 targetDecals.add(bulletHole);
 
-                const distFromCenter = Math.sqrt(localHit.x * localHit.x + localHit.y * localHit.y);
-                let points = 10 - Math.floor(distFromCenter / 0.025); // 2.5cm per ring
+                const dist = Math.sqrt(localHit.x * localHit.x + localHit.y * localHit.y);
+                let points = 10 - Math.floor(dist / 0.025);
                 if(points < 0) points = 0;
 
-                hits++; totalScore += points; updateStats();
-
+                hits++; totalScore += points;
+                document.getElementById('hit-count').innerText = hits;
+                document.getElementById('total-score').innerText = totalScore;
+                
                 scoreBoard.innerText = `${points} POÄNG`;
-                scoreBoard.style.color = points >= 8 ? "#00ff00" : (points > 0 ? "#ffff00" : "#ff0000");
-
+                scoreBoard.style.color = points >= 8 ? "#00ff00" : (points > 0 ? "#ffff00" : "#ff1744");
             } else {
-                scoreBoard.innerText = "BOM!";
-                scoreBoard.style.color = "#ff4444";
+                scoreBoard.innerText = "BOM!"; scoreBoard.style.color = "#ff4444";
             }
         }
 
-        function updateStats() {
-            document.getElementById('hit-count').innerText = hits;
-            document.getElementById('total-score').innerText = totalScore;
+        function clearTarget() {
+            while(targetDecals.children.length > 0) targetDecals.remove(targetDecals.children[0]);
+            hits = 0; totalScore = 0;
+            document.getElementById('hit-count').innerText = 0;
+            document.getElementById('total-score').innerText = 0;
+            document.getElementById('stability-score').innerText = "--";
         }
 
         function onWindowResize() {
@@ -325,7 +308,36 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        function render() {
+        function render(timestamp, frame) {
+            if (frame) {
+                const referenceSpace = renderer.xr.getReferenceSpace();
+                const session = renderer.xr.getSession();
+
+                // Hit-testing logik för att placera tavlan
+                if (placingMode) {
+                    if (hitTestSourceRequested === false) {
+                        session.requestReferenceSpace('viewer').then((refSpace) => {
+                            session.requestHitTestSource({ space: refSpace }).then((source) => { hitTestSource = source; });
+                        });
+                        hitTestSourceRequested = true;
+                    }
+
+                    if (hitTestSource) {
+                        const hitTestResults = frame.getHitTestResults(hitTestSource);
+                        if (hitTestResults.length > 0) {
+                            const hit = hitTestResults[0];
+                            reticle.visible = true;
+                            reticle.matrix.fromArray(hit.getPose(referenceSpace).transform.matrix);
+                            placeBtn.style.display = 'block';
+                            scoreBoard.innerText = "YTA HITTAD";
+                        } else {
+                            reticle.visible = false;
+                            placeBtn.style.display = 'none';
+                            scoreBoard.innerText = "SKANNA RUMMET";
+                        }
+                    }
+                }
+            }
             renderer.render(scene, camera);
         }
     </script>
