@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=landscape">
-    <title>2D Skytteteknik Analys Pro (Robust)</title>
+    <title>2D Analysator - MantisX Klon</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap');
         * { box-sizing: border-box; user-select: none; font-family: 'Roboto', sans-serif; }
@@ -84,7 +84,10 @@
 
             <div class="input-group">
                 <label><span>Vapnets Tröghet (Vikt)</span></label>
-                <input type="range" id="inertia-slider" min="0.01" max="0.3" step="0.01" value="0.10">
+                <input type="range" id="inertia-slider" min="0.02" max="0.30" step="0.02" value="0.08">
+                <div style="display:flex; justify-content:space-between; font-size: 9px; color: #888;">
+                    <span>Tung (Glock 45)</span><span>Lätt (Attrapp)</span>
+                </div>
             </div>
 
             <div class="btn-row">
@@ -94,7 +97,7 @@
 
             <div id="feedback-box">
                 <div id="feedback-title">DIAGNOSTIK</div>
-                <div id="feedback-text">Kalibrera siktet.<br><br>Testa att rikta vapnet upp/ner. Om siktet rör sig åt fel håll, klicka ur "Invert Y".<br><br>Cooldown för avtryckare: 2,5s.</div>
+                <div id="feedback-text">Justera vikten/trögheten för att matcha din Glock 45.<br><br>Testa att rikta vapnet upp/ner. Om siktet rör sig åt fel håll, klicka ur "Invert Y".<br><br>Cooldown: 2,5s.</div>
             </div>
         </div>
 
@@ -127,7 +130,7 @@
         
         let prevAlpha = null, prevBeta = null, prevGamma = null;
         let lastTriggerTime = 0, lastShotRecord = 0;
-        const cooldownTime = 2500; // 2.5 sekunder omladdningstid
+        const cooldownTime = 2500; 
 
         // --- START ---
         document.getElementById('btn-start').addEventListener('click', async () => {
@@ -139,7 +142,6 @@
             document.getElementById('start-screen').style.display = 'none';
             document.getElementById('main-ui').style.display = 'grid';
             
-            // Begär Ljud
             navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 const analyser = audioCtx.createAnalyser();
@@ -152,9 +154,9 @@
                     let now = Date.now();
                     
                     if (now - lastTriggerTime < cooldownTime) {
-                        micDot.className = 'mic-dot cooldown'; // Orange = Omladdning
+                        micDot.className = 'mic-dot cooldown'; 
                     } else {
-                        micDot.className = 'mic-dot active'; // Grön = Redo
+                        micDot.className = 'mic-dot active'; 
                         if (Math.max(...dataArray) > 170) {
                             lastTriggerTime = now; 
                             registerShot();
@@ -173,27 +175,18 @@
         // --- GIMBAL SANITIZER GYRO ---
         window.addEventListener('deviceorientation', (e) => {
             if (e.alpha === null) return;
+            if (prevAlpha === null) { prevAlpha = e.alpha; prevBeta = e.beta; prevGamma = e.gamma; return; }
             
-            if (prevAlpha === null) {
-                prevAlpha = e.alpha; prevBeta = e.beta; prevGamma = e.gamma;
-                return;
-            }
-            
-            // Räkna ut differensen mellan frames
             let dAlpha = e.alpha - prevAlpha;
             let dBeta = e.beta - prevBeta;
             let dGamma = e.gamma - prevGamma;
             
-            // Hantera 360-wraps
             if (dAlpha > 180) dAlpha -= 360; else if (dAlpha < -180) dAlpha += 360;
             if (dBeta > 180) dBeta -= 360; else if (dBeta < -180) dBeta += 360;
             if (dGamma > 180) dGamma -= 360; else if (dGamma < -180) dGamma += 360;
             
-            // --- GIMBAL LOCK FILTER (The Sanitizer) ---
-            // Om en vinkel plötsligt hoppar mer än 50 grader på en millisekund vet vi att det är en Gimbal Lock-spik. Vi ignorerar den!
             if (Math.abs(dAlpha) > 50 || Math.abs(dBeta) > 50 || Math.abs(dGamma) > 50) {
-                prevAlpha = e.alpha; prevBeta = e.beta; prevGamma = e.gamma;
-                return;
+                prevAlpha = e.alpha; prevBeta = e.beta; prevGamma = e.gamma; return;
             }
 
             const mount = document.getElementById('mount-select').value;
@@ -201,26 +194,17 @@
             const invY = document.getElementById('inv-y').checked ? -1 : 1;
             
             let moveX = 0, moveY = 0;
-            const sensitivity = 2.0; // Grundkänslighet
+            const sensitivity = 2.0; 
 
-            // Hantera montering
-            if (mount === 'top') {
-                moveX = dAlpha;
-                moveY = dGamma;
-            } else {
-                moveX = dGamma;
-                moveY = dAlpha;
-            }
+            if (mount === 'top') { moveX = dAlpha; moveY = dGamma; } 
+            else { moveX = dGamma; moveY = dAlpha; }
 
-            // Uppdatera råposition
             rawAimX += (moveX * sensitivity * invX);
             rawAimY += (moveY * sensitivity * invY);
 
-            // Spärra siktet så det inte försvinner för långt
             rawAimX = Math.max(-50, Math.min(150, rawAimX));
             rawAimY = Math.max(-50, Math.min(150, rawAimY));
 
-            // Spara föregående värden
             prevAlpha = e.alpha; prevBeta = e.beta; prevGamma = e.gamma;
         });
 
@@ -264,7 +248,6 @@
             let split = lastShotRecord === 0 ? 0 : (now - lastShotRecord) / 1000;
             lastShotRecord = now;
 
-            // Beräkna poäng från mitten
             let pts = 10 - Math.floor(Math.sqrt(Math.pow(aimX-50,2) + Math.pow(aimY-50,2))/4.5);
             if(pts<0) pts=0; shots.push({x:aimX, y:aimY, pts});
             
@@ -272,7 +255,6 @@
             document.getElementById('analys-avg').innerText = (shots.reduce((a,b)=>a+b.pts,0)/shots.length).toFixed(1);
             document.getElementById('analys-split').innerText = split > 0 ? split.toFixed(2) + "s" : "--";
             
-            // MantisX Felanalys
             let dx = aimX - 50; let dy = aimY - 50;
             let fC = "#00ff00", fT = "PERFEKT!", fTxt = "Siktet låg stilla i mitten.";
             
@@ -291,16 +273,15 @@
         }
 
         function loop2D() {
+            // Läs in Vapnets Tröghet (Tungt vapen = lågt värde, lätt vapen = högt värde)
             const inertia = parseFloat(document.getElementById('inertia-slider').value);
             
-            // Fysisk interpolation för att siktet ska kännas mjukt och tungt
             aimX += (rawAimX - aimX) * inertia; 
             aimY += (rawAimY - aimY) * inertia;
             
             trace.push({x:aimX, y:aimY}); if(trace.length>30) trace.shift();
             ekg.push(aimY); if(ekg.length>200) ekg.shift();
 
-            // Rita Live Måltavla
             const tw = tCan.width; drawBg(tCtx, tw, tw);
             shots.forEach(s => { tCtx.fillStyle='#fff'; tCtx.beginPath(); tCtx.arc((s.x/100)*tw, (s.y/100)*tw, 6, 0, Math.PI*2); tCtx.fill(); });
             
@@ -311,7 +292,6 @@
             }
             tCtx.fillStyle='#fff'; tCtx.beginPath(); tCtx.arc((aimX/100)*tw, (aimY/100)*tw, 8, 0, Math.PI*2); tCtx.fill();
 
-            // Rita EKG
             eCtx.fillStyle='#111'; eCtx.fillRect(0,0,800,200);
             eCtx.strokeStyle='#333'; eCtx.beginPath(); eCtx.moveTo(0,100); eCtx.lineTo(800,100); eCtx.stroke();
             eCtx.beginPath(); eCtx.strokeStyle='#00ffff'; eCtx.lineWidth=3;
