@@ -3,59 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>WebXR Banan-Simulator AR</title>
+    <title>Glock 45 AR Simulator</title>
     <style>
-        body { margin: 0; padding: 0; overflow: hidden; font-family: sans-serif; }
+        body { margin: 0; padding: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #000; }
         
-        /* UI Overlay som visas ovanpå AR-kameran */
         #overlay-ui {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            display: flex;
-            flex-direction: column;
-            pointer-events: none; /* Låter klick passera igenom till AR-scenen */
-            z-index: 10;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; pointer-events: none; z-index: 10;
         }
 
-        #header { padding: 20px; text-align: center; color: white; background: rgba(0,0,0,0.5); }
-        #scoreBoard { font-size: 24px; font-weight: bold; }
+        #header { 
+            padding: 15px; text-align: center; color: white; background: rgba(0,0,0,0.6); 
+            display: flex; justify-content: space-between; align-items: center; pointer-events: auto;
+        }
         
-        #footer {
-            margin-top: auto; /* Trycker ner foten */
-            padding: 20px;
-            text-align: center;
-            color: white;
-            background: rgba(0,0,0,0.5);
-            pointer-events: auto; /* Aktivera klick för knappar här */
+        #stats { text-align: left; font-size: 14px; }
+        #scoreBoard { font-size: 24px; font-weight: bold; color: #00ffff; }
+
+        .control-group select, .control-group button {
+            background: #222; color: #fff; border: 1px solid #444; padding: 8px 12px;
+            font-size: 16px; border-radius: 5px; outline: none; margin-left: 5px; cursor: pointer;
         }
 
-        #ar-instructions { color: #aaa; font-size: 14px; margin-top: 5px;}
+        #footer {
+            margin-top: auto; padding: 20px; text-align: center; color: rgba(255,255,255,0.7);
+            background: linear-gradient(transparent, rgba(0,0,0,0.8)); font-size: 14px;
+        }
     </style>
 </head>
 <body>
 
     <div id="overlay-ui">
         <div id="header">
-            <div>WebXR AR-Simulator</div>
-            <div id="scoreBoard">Redo (Kräver HTTPS)</div>
+            <div id="stats">
+                Träffar: <span id="hit-count">0</span><br>
+                Poäng: <span id="total-score">0</span>
+            </div>
+            <div id="scoreBoard">VÄNTAR...</div>
+            <div class="control-group">
+                <select id="distance-select">
+                    <option value="10">10 Meter</option>
+                    <option value="15">15 Meter</option>
+                    <option value="25">25 Meter</option>
+                </select>
+                <button id="clear-btn">Rensa</button>
+            </div>
         </div>
-        <div id="footer">
-            <div id="ar-instructions">Sikta med telefonen och tryck på skärmen för att skjuta.</div>
-        </div>
+        <div id="footer">Linjera siktet (vit prick i skåran) och tryck på skärmen för att skjuta.</div>
     </div>
 
     <script type="module">
         import * as THREE from 'https://unpkg.com/three@0.150.1/build/three.module.js';
         import { ARButton } from 'https://unpkg.com/three@0.150.1/examples/jsm/webxr/ARButton.js';
 
-        let camera, scene, renderer, target;
-        let controller;
-        let raycaster;
+        let camera, scene, renderer, target, targetDecals;
+        let controller, raycaster;
         let audioCtx;
-        const scoreBoard = document.getElementById('scoreBoard');
+        
+        let hits = 0;
+        let totalScore = 0;
 
-        // Hjälpmatriser för Raycasting
+        const scoreBoard = document.getElementById('scoreBoard');
+        const distanceSelect = document.getElementById('distance-select');
         const tempMatrix = new THREE.Matrix4();
         const rayDirection = new THREE.Vector3();
 
@@ -63,58 +72,212 @@
         animate();
 
         function init() {
-            // --- 1. Grundläggande Three.js Setup ---
             scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 50);
 
-            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
-
-            // Belysning (krävs för att 3D-objekt ska synas bra)
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
             scene.add(ambientLight);
             const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            directionalLight.position.set(0, 10, 0);
+            directionalLight.position.set(0, 5, 0);
             scene.add(directionalLight);
 
-            // Renderer med XR aktiverat
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setPixelRatio(window.devicePixelRatio);
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.xr.enabled = true; // VIKTIGT: Aktivera XR
+            renderer.xr.enabled = true;
             document.body.appendChild(renderer.domElement);
 
-            // --- 2. Skapa den virtuella Måltavlan (3D) ---
-            // Vi skapar en platt disc (Cylinder med liten höjd)
-            const geometry = new THREE.CylinderGeometry(0.3, 0.3, 0.02, 32);
-            // Enkel röd färg (byt mot textur senare om du vill)
-            const material = new THREE.MeshStandardMaterial({ color: 0xff3333, metalness: 0.3, roughness: 0.6 });
-            target = new THREE.Mesh(geometry, material);
-            
-            // Rotera så framsidan pekar mot kameran
-            target.rotation.x = Math.PI / 2;
-            
-            // Placera den 2 meter framför startpunkten (negativ Z) och 1.5m upp
-            target.position.set(0, 1.5, -2); 
-            scene.add(target);
+            // --- Skapa Måltavla (Procedur-genererad Canvas) ---
+            createTarget();
 
-            // --- 3. Lägg till AR-startknappen ---
-            // Vi skickar med vårt UI-overlay så det visas i AR
-            const overlay = document.getElementById('overlay-ui');
-            document.body.appendChild(ARButton.createButton(renderer, { 
-                requiredFeatures: ['hit-test'], // Hit-test behövs om vi vill placera på golvet senare
-                optionalFeatures: ['dom-overlay'],
-                domOverlay: { root: overlay } 
-            }));
-
-            // --- 4. Setup för Skjutning (Input & Raycasting) ---
-            raycaster = new THREE.Raycaster();
-
-            // WebXR hanterar input (skärmtryck) via controllers
+            // --- Skapa Glock 45 Sikte ---
             controller = renderer.xr.getController(0);
-            // Registrera 'select' eventet (klick på skärmen)
             controller.addEventListener('select', onShoot);
             scene.add(controller);
+            buildGunSights(controller);
 
+            // AR Knapp
+            const overlay = document.getElementById('overlay-ui');
+            document.body.appendChild(ARButton.createButton(renderer, { 
+                optionalFeatures: ['dom-overlay'], domOverlay: { root: overlay } 
+            }));
+
+            // UI Listeners
+            distanceSelect.addEventListener('change', (e) => {
+                const dist = parseFloat(e.target.value);
+                target.position.set(0, 1.5, -dist);
+            });
+
+            document.getElementById('clear-btn').addEventListener('click', () => {
+                // Ta bort alla skotthål
+                while(targetDecals.children.length > 0){ 
+                    targetDecals.remove(targetDecals.children[0]); 
+                }
+                hits = 0; totalScore = 0; updateStats();
+                scoreBoard.innerText = "RENSAD";
+                scoreBoard.style.color = "#aaa";
+            });
+
+            raycaster = new THREE.Raycaster();
             window.addEventListener('resize', onWindowResize);
+        }
+
+        function createTarget() {
+            // Skapa en canvas för att rita måltavlans ringar exakt
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024; canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+
+            const cx = 512, cy = 512;
+            ctx.fillStyle = '#ffebce'; // Pappersfärg
+            ctx.fillRect(0, 0, 1024, 1024);
+
+            // Rita ringar. Om hela tavlan är 50cm (0.5m), och 10-ringen ska vara 10cm,
+            // då utgör 10-ringen 20% av tavlans totala bredd.
+            const rings = 10;
+            const maxRadius = 450; // Lämnar lite kant
+            const ringStep = maxRadius / rings;
+
+            ctx.lineWidth = 4;
+            for (let i = 1; i <= rings; i++) {
+                const radius = maxRadius - (i - 1) * ringStep;
+                ctx.beginPath();
+                ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+                
+                // Svarta ringar i mitten (ex 7-10), vita utanför
+                if (i > 6) {
+                    ctx.fillStyle = '#111'; ctx.fill();
+                    ctx.strokeStyle = '#eee'; ctx.stroke();
+                } else {
+                    ctx.strokeStyle = '#111'; ctx.stroke();
+                }
+            }
+            // Mittenkors
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(cx - 20, cy); ctx.lineTo(cx + 20, cy); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(cx, cy - 20); ctx.lineTo(cx, cy + 20); ctx.stroke();
+
+            const texture = new THREE.CanvasTexture(canvas);
+            
+            // Fysisk 3D tavla (0.5m x 0.5m i verkligheten)
+            const geometry = new THREE.PlaneGeometry(0.5, 0.5);
+            const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
+            target = new THREE.Mesh(geometry, material);
+            
+            target.position.set(0, 1.5, -10); // Standard 10m
+            scene.add(target);
+
+            // Grupp för skotthål kopplad till tavlan
+            targetDecals = new THREE.Group();
+            target.add(targetDecals);
+        }
+
+        function buildGunSights(parent) {
+            const gunMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 });
+            const dotMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+            const sightsGroup = new THREE.Group();
+
+            // Siktet placeras relativt till kameran. Z är djup (framåt är minus). Y är höjd.
+            // Bakre sikte (skåran)
+            const rearGeo = new THREE.BoxGeometry(0.04, 0.015, 0.01);
+            const rearSight = new THREE.Mesh(rearGeo, gunMat);
+            rearSight.position.set(0, -0.05, -0.2); // Lite ner, 20cm framför ögat
+            
+            // Skapa "urgröpningen" visuellt genom att ha två klossar istället (vänster/höger)
+            const rearLeft = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.015, 0.01), gunMat);
+            rearLeft.position.set(-0.015, 0, 0); rearSight.add(rearLeft);
+            const rearRight = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.015, 0.01), gunMat);
+            rearRight.position.set(0.015, 0, 0); rearSight.add(rearRight);
+            rearSight.material.transparent = true; rearSight.material.opacity = 0; // Göm centerblocket
+
+            // Främre sikte (kornet)
+            const frontGeo = new THREE.BoxGeometry(0.005, 0.012, 0.02);
+            const frontSight = new THREE.Mesh(frontGeo, gunMat);
+            // Placerat längre fram längs "pipan"
+            frontSight.position.set(0, -0.05, -0.4); 
+
+            // Vit prick på främre siktet
+            const dotGeo = new THREE.CircleGeometry(0.002, 16);
+            const dot = new THREE.Mesh(dotGeo, dotMat);
+            dot.position.set(0, 0.002, 0.0101); // På baksidan av kornet
+            frontSight.add(dot);
+
+            sightsGroup.add(rearSight);
+            sightsGroup.add(frontSight);
+
+            // Lägg till i controllern så den följer telefonens rörelse
+            parent.add(sightsGroup);
+        }
+
+        function playSyntheticShot() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            const bufferSize = audioCtx.sampleRate * 0.2;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+            const noise = audioCtx.createBufferSource(); noise.buffer = buffer;
+            const filter = audioCtx.createBiquadFilter(); filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(1500, audioCtx.currentTime);
+            filter.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
+
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(0.8, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+
+            noise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+            noise.start(); noise.stop(audioCtx.currentTime + 0.15);
+        }
+
+        function onShoot() {
+            playSyntheticShot();
+
+            // Räkna ut var kameran pekar
+            tempMatrix.extractRotation(controller.matrixWorld);
+            rayDirection.set(0, 0, -1).applyMatrix4(tempMatrix);
+            raycaster.set(controller.position, rayDirection);
+
+            const intersects = raycaster.intersectObject(target);
+
+            if (intersects.length > 0) {
+                const hitPoint = intersects[0].point; // Världskoordinat
+
+                // Omvandla till lokala koordinater på tavlan för att sätta skotthål
+                const localHit = target.worldToLocal(hitPoint.clone());
+                
+                // Skapa skotthål (Decal)
+                const holeGeo = new THREE.CircleGeometry(0.004, 16); // 8mm hål
+                const holeMat = new THREE.MeshBasicMaterial({ color: 0x111111, depthTest: false }); // depthTest false förhindrar z-fighting
+                const bulletHole = new THREE.Mesh(holeGeo, holeMat);
+                bulletHole.position.set(localHit.x, localHit.y, 0.001); // Ligger precis ovanpå
+                targetDecals.add(bulletHole);
+
+                // Räkna ut poäng baserat på avstånd från mitten (0,0 i lokala coords)
+                const distFromCenter = Math.sqrt(localHit.x * localHit.x + localHit.y * localHit.y);
+                // Tavlan är 0.5m. Radien är 0.25m. 10 poängzoner.
+                // Varje poängzon är 0.25 / 10 = 0.025m (2.5cm) bred.
+                let points = 10 - Math.floor(distFromCenter / 0.025);
+                if(points < 0) points = 0;
+
+                hits++;
+                totalScore += points;
+                updateStats();
+
+                scoreBoard.innerText = `${points} POÄNG`;
+                scoreBoard.style.color = points >= 8 ? "#00ff00" : (points > 0 ? "#ffff00" : "#ff0000");
+
+            } else {
+                scoreBoard.innerText = "BOM!";
+                scoreBoard.style.color = "#ff4444";
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('hit-count').innerText = hits;
+            document.getElementById('total-score').innerText = totalScore;
         }
 
         function onWindowResize() {
@@ -123,80 +286,11 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        // --- 5. Ljudsyntes (Kopia från tidigare) ---
-        function playSyntheticShot() {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            
-            const bufferSize = audioCtx.sampleRate * 0.3; // 0.3 sekunder
-            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-            const data = buffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) { data[i] = Math.random() * 2 - 1; }
-
-            const noise = audioCtx.createBufferSource();
-            noise.buffer = buffer;
-
-            const filter = audioCtx.createBiquadFilter();
-            filter.type = 'lowpass';
-            filter.frequency.setValueAtTime(1000, audioCtx.currentTime);
-            filter.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
-
-            const gainNode = audioCtx.createGain();
-            gainNode.gain.setValueAtTime(0.8, audioCtx.currentTime); // Lite lägre volym
-            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
-
-            noise.connect(filter);
-            filter.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-
-            noise.start();
-            noise.stop(audioCtx.currentTime + 0.15);
-        }
-
-        // --- 6. Skjut-logik (Raycasting i 3D) ---
-        function onShoot() {
-            playSyntheticShot(); // Spela ljud direkt
-
-            // WebXR 'select'-eventet garanterar en giltig rörelse-gesture,
-            // så vi kan starta AudioContext här.
-            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-
-            // Uppdatera Raycaster baserat på telefonens (kontrollerns) position och riktning
-            tempMatrix.extractRotation(controller.matrixWorld);
-            rayDirection.set(0, 0, -1).applyMatrix4(tempMatrix); // "Framåt" är negativ Z
-            
-            raycaster.set(controller.position, rayDirection);
-
-            // Beräkna om vi krockar med måltavlan
-            const intersects = raycaster.intersectObject(target);
-
-            if (intersects.length > 0) {
-                // TRÄFF!
-                scoreBoard.innerText = "TRÄFF!";
-                scoreBoard.style.color = "#4CAF50"; // Grön
-                
-                // Enkel visuell feedback: Gör tavlan grön en kort stund
-                target.material.color.setHex(0x00ff00);
-                setTimeout(() => { target.material.color.setHex(0xff3333); }, 200);
-
-            } else {
-                // BOM!
-                scoreBoard.innerText = "BOM!";
-                scoreBoard.style.color = "#f44336"; // Röd
-            }
-        }
-
-        // --- 7. Animations-loop (VIKTIGT för WebXR) ---
         function animate() {
-            // I WebXR måste vi använda renderer.setAnimationLoop, inte requestAnimationFrame
             renderer.setAnimationLoop(render);
         }
 
-        function render(timestamp, frame) {
-            // Om vi är i en AR-session, rotera tavlan sakta
-            if (renderer.xr.isPresenting) {
-                 target.rotation.z += 0.005; // Snurrar tavlan
-            }
+        function render() {
             renderer.render(scene, camera);
         }
     </script>
