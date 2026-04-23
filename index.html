@@ -2,148 +2,234 @@
 <html lang="sv">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, orientation=landscape">
-    <title>AR Pistol Simulator - Precision</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=landscape">
+    <title>MantisX / Glock 45 Simulator Pro</title>
     <style>
-        body { margin: 0; padding: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif; background: #000; color: #fff;}
-        
-        #overlay-ui {
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap');
+
+        * { box-sizing: border-box; user-select: none; font-family: 'Roboto', sans-serif; }
+        body { margin: 0; padding: 0; background-color: #111; color: #fff; overflow: hidden; width: 100vw; height: 100vh; }
+
+        /* --- HUVUDMENY --- */
+        #main-menu {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            display: flex; flex-direction: column; pointer-events: none; z-index: 10;
+            background: linear-gradient(135deg, #1a1a1a, #0a0a0a);
+            display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000;
+        }
+        #main-menu h1 { color: #00ffff; font-size: 40px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 4px 10px rgba(0,255,255,0.3); }
+        #main-menu p { color: #aaa; margin-bottom: 40px; font-size: 18px; }
+        
+        .menu-btn-container { display: flex; gap: 20px; }
+        .menu-btn {
+            background: #222; border: 2px solid #444; color: #fff; padding: 30px 40px; font-size: 20px; font-weight: bold;
+            border-radius: 10px; cursor: pointer; transition: 0.3s; display: flex; flex-direction: column; align-items: center; gap: 10px; width: 250px; text-transform: uppercase;
+        }
+        .menu-btn:hover { background: #333; transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+        .menu-btn span { font-size: 12px; color: #888; text-transform: none; font-weight: normal; text-align: center; }
+        
+        #btn-ar { border-color: #2e7d32; }
+        #btn-ar:hover { border-color: #4caf50; box-shadow: 0 10px 20px rgba(76, 175, 80, 0.2); }
+        #btn-2d { border-color: #007bff; }
+        #btn-2d:hover { border-color: #00e5ff; box-shadow: 0 10px 20px rgba(0, 229, 255, 0.2); }
+
+        /* --- GEMENSAMMA TILLBAKA-KNAPPAR --- */
+        .back-btn {
+            position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); color: #fff; border: 1px solid #555;
+            padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; z-index: 999; pointer-events: auto;
         }
 
-        #header { 
-            padding: 10px 20px; background: linear-gradient(rgba(0,0,0,0.9), transparent); 
-            display: flex; justify-content: space-between; align-items: flex-start; pointer-events: auto;
-        }
-        
+        /* --- AR LÄGE STYLES --- */
+        #ar-container { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        #ar-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; pointer-events: none; z-index: 10; }
+        #ar-header { padding: 10px 20px 10px 100px; background: linear-gradient(rgba(0,0,0,0.9), transparent); display: flex; justify-content: space-between; align-items: flex-start; pointer-events: auto; }
         .stat-box { background: rgba(0,0,0,0.6); padding: 5px 10px; border-radius: 5px; font-size: 16px; margin-bottom: 5px; border-left: 3px solid #555;}
         .stat-box span { font-weight: bold; font-size: 20px; color: #00ffff;}
-        
         #statusBoard { font-size: 24px; font-weight: 900; color: #ffeb3b; text-shadow: 2px 2px 4px #000; text-align: center; flex-grow: 1; margin-top: 5px;}
-
         .controls { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
-        
-        button.action-btn {
-            background: #2e7d32; color: #fff; border: 2px solid #1b5e20; padding: 10px 15px;
-            font-size: 14px; font-weight: bold; border-radius: 5px; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 0 #1b5e20; pointer-events: auto;
-        }
+        button.action-btn { background: #2e7d32; color: #fff; border: 2px solid #1b5e20; padding: 10px 15px; font-size: 14px; font-weight: bold; border-radius: 5px; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 0 #1b5e20; pointer-events: auto; }
         button.action-btn:active { transform: translateY(4px); box-shadow: 0 0 0 #1b5e20; }
         #place-btn { background: #ff9800; border-color: #e65100; box-shadow: 0 4px 0 #e65100; font-size: 18px; padding: 15px 25px; display: none; margin: auto;}
         
-        /* Dynamiskt Glock Sikte */
-        #glock-sight {
-            position: absolute; bottom: 5%; left: 50%; transform: translateX(-50%);
-            width: 300px; height: 150px; pointer-events: none;
-            display: flex; justify-content: center; align-items: flex-end;
-        }
-        /* Bakre siktet (skåran) - Fast på skärmen */
-        .rear-sight {
-            width: 180px; height: 70px; border: 35px solid #1a1a1a; border-top: none;
-            position: absolute; bottom: 0; border-radius: 4px; box-shadow: inset 0 5px 15px rgba(0,0,0,0.8); z-index: 2;
-        }
-        /* Främre siktet (kornet) - Rör sig med gyrot! */
-        .front-sight {
-            width: 30px; height: 80px; background: #222; position: absolute; bottom: 20px;
-            display: flex; justify-content: center; padding-top: 10px; border-radius: 3px 3px 0 0; 
-            box-shadow: 0 -2px 5px rgba(0,0,0,0.5); z-index: 1; transition: transform 0.05s ease-out;
-        }
+        #glock-sight { position: absolute; bottom: 5%; left: 50%; transform: translateX(-50%); width: 300px; height: 150px; pointer-events: none; display: flex; justify-content: center; align-items: flex-end; }
+        .rear-sight { width: 180px; height: 70px; border: 35px solid #1a1a1a; border-top: none; position: absolute; bottom: 0; border-radius: 4px; box-shadow: inset 0 5px 15px rgba(0,0,0,0.8); z-index: 2; }
+        .front-sight { width: 30px; height: 80px; background: #222; position: absolute; bottom: 20px; display: flex; justify-content: center; padding-top: 10px; border-radius: 3px 3px 0 0; box-shadow: 0 -2px 5px rgba(0,0,0,0.5); z-index: 1; transition: transform 0.05s ease-out; }
         .white-dot { width: 16px; height: 16px; background: #fff; border-radius: 50%; box-shadow: 0 0 5px rgba(255,255,255,0.8); }
-
         #audio-status { position: absolute; bottom: 10px; left: 10px; font-size: 12px; color: #ffeb3b; background: rgba(0,0,0,0.5); padding: 5px; border-radius: 5px;}
+
+        /* --- 2D LÄGE STYLES --- */
+        #analys-container { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #121212; overflow-y: auto; padding: 20px; }
+        .analys-wrapper { display: flex; gap: 20px; max-width: 1200px; margin: 40px auto 0 auto; height: calc(100% - 60px); }
+        .panel { background: #1e1e1e; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border: 1px solid #333; display: flex; flex-direction: column;}
+        .panel-left { flex: 1; max-width: 350px; }
+        .panel-right { flex: 2; display: flex; flex-direction: column; gap: 15px; overflow-y: auto;}
         
-        /* Start-skärm */
-        #start-screen {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #111; z-index: 100; display: flex; flex-direction: column;
-            justify-content: center; align-items: center; text-align: center; pointer-events: auto;
-        }
+        .controls-2d { display: grid; gap: 15px; margin-top: 20px;}
+        .controls-2d label { font-size: 12px; color: #aaa; font-weight: bold; text-transform: uppercase; }
+        .controls-2d select, .controls-2d input[type=range] { width: 100%; padding: 10px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 5px; outline: none; }
+        .btn-row { display: flex; gap: 10px; margin-top: 10px; }
+        
+        #shoot-btn-2d { background: #2e7d32; padding: 15px; border:none; border-radius:5px; color:white; font-weight:bold; cursor:pointer; flex:2; box-shadow: 0 4px 0 #1b5e20;}
+        #reset-btn-2d { background: #d32f2f; padding: 15px; border:none; border-radius:5px; color:white; font-weight:bold; cursor:pointer; flex:1; box-shadow: 0 4px 0 #b71c1c;}
+        
+        #feedback-box { border-left: 4px solid #00ffff; padding-left: 15px; margin-top: 20px; background: rgba(0,255,255,0.05); padding: 15px; border-radius: 0 5px 5px 0;}
+        #feedback-title { font-weight: 900; color: #00ffff; font-size: 16px; margin-bottom: 5px; text-transform: uppercase;}
+        #feedback-text { font-size: 14px; line-height: 1.5; color: #ccc; }
+        
+        .canvas-row { display: flex; gap: 15px; justify-content: center; }
+        .canvas-box { display: flex; flex-direction: column; align-items: center; background: #000; padding: 10px; border-radius: 5px; border: 1px solid #333;}
+        .canvas-box span { font-size: 12px; color: #888; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
+        canvas { background: #000; }
+        canvas.square { width: 250px; height: 250px; }
+        canvas.wide { width: 100%; height: 150px; }
     </style>
 </head>
 <body>
 
-    <div id="start-screen">
-        <h1 style="color: #00ffff;">AR Precision-Simulator</h1>
-        <p style="color: #aaa; margin-bottom: 20px;">Snurra telefonen till landskapsläge.<br>Håll struket korn för att träffa.</p>
-        <button id="btn-start" class="action-btn" style="font-size: 20px; padding: 20px 40px;">STARTA SYSTEMET</button>
+    <div id="main-menu">
+        <h1>Simulator Pro</h1>
+        <p>Välj träningsläge för din Pixel 7 Pro</p>
+        <div class="menu-btn-container">
+            <div class="menu-btn" id="btn-ar">
+                AR PRECISION
+                <span>Klistra tavla på väggen och skjut med äkta attrapp (kräver mic & gyro).</span>
+            </div>
+            <div class="menu-btn" id="btn-2d">
+                2D ANALYS
+                <span>Träna skytteteknik, se EKG-grafer och heatmap för diagnostik.</span>
+            </div>
+        </div>
     </div>
 
-    <div id="overlay-ui" style="display:none;">
-        <div id="header">
-            <div>
-                <div class="stat-box">Träffar: <span id="hit-count">0</span></div>
+    <div id="ar-container">
+        <button class="back-btn" onclick="location.reload()">Tillbaka till Meny</button>
+        <div id="ar-ui">
+            <div id="ar-header">
+                <div><div class="stat-box">Träffar: <span id="ar-hit-count">0</span></div></div>
+                <div id="statusBoard">STARTAR KAMERA...</div>
+                <div class="controls">
+                    <button id="ar-clear-btn" class="action-btn" style="background: #d32f2f; border-color: #b71c1c;">Rensa</button>
+                    <button id="ar-move-btn" class="action-btn">Flytta</button>
+                </div>
             </div>
-            
-            <div id="statusBoard">SKANNA VÄGGEN</div>
-            
-            <div class="controls">
-                <button id="clear-btn" class="action-btn" style="background: #d32f2f; border-color: #b71c1c; box-shadow: 0 4px 0 #b71c1c;">Rensa Tavla</button>
-                <button id="move-btn" class="action-btn">Flytta Tavla</button>
+            <button id="place-btn" class="action-btn">FÄST PÅ VÄGG</button>
+            <div id="glock-sight">
+                <div class="rear-sight"></div>
+                <div class="front-sight" id="front-sight"><div class="white-dot"></div></div>
             </div>
+            <div id="audio-status">Mic: VÄNTAR...</div>
         </div>
+    </div>
 
-        <button id="place-btn" class="action-btn">FÄST PÅ VÄGG</button>
-
-        <div id="glock-sight">
-            <div class="rear-sight"></div>
-            <div class="front-sight" id="front-sight"><div class="white-dot"></div></div>
-        </div>
+    <div id="analys-container">
+        <button class="back-btn" onclick="location.reload()">Tillbaka till Meny</button>
         
-        <div id="audio-status">Mic: VÄNTAR...</div>
+        <div class="analys-wrapper">
+            <div class="panel panel-left">
+                <h2 style="color:#00ffff; margin-top:0;">Inställningar</h2>
+                <div style="display:flex; justify-content:space-between; color:#aaa; font-weight:bold; margin-bottom: 10px;">
+                    <div>Träffar: <span id="analys-hits" style="color:#fff;">0</span></div>
+                    <div>Snitt: <span id="analys-avg" style="color:#fff;">0.0</span></div>
+                </div>
+
+                <div class="controls-2d">
+                    <div>
+                        <label>Simulera Teknik-fel</label>
+                        <select id="technique-select">
+                            <option value="neutral">Neutral (Perfekt)</option>
+                            <option value="dip">Dippar (Anticiperar)</option>
+                            <option value="pull_left">Ryck Vänster (Pushing)</option>
+                            <option value="pull_right">Ryck Höger (Milking)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Vapen-skakningar</label>
+                        <input type="range" id="wobble-slider" min="0.5" max="5" step="0.1" value="1.5">
+                    </div>
+                    <div class="btn-row">
+                        <button id="shoot-btn-2d">Skjut</button>
+                        <button id="reset-btn-2d">Rensa</button>
+                    </div>
+                </div>
+
+                <div id="feedback-box">
+                    <div id="feedback-title">DIAGNOSTIK</div>
+                    <div id="feedback-text">Väntar på skottdata...</div>
+                </div>
+            </div>
+
+            <div class="panel panel-right">
+                <div class="canvas-row">
+                    <div class="canvas-box">
+                        <span>Live Sikte</span>
+                        <canvas id="target-canvas" class="square" width="300" height="300"></canvas>
+                    </div>
+                    <div class="canvas-box">
+                        <span>Träffbild (Heatmap)</span>
+                        <canvas id="heatmap-canvas" class="square" width="300" height="300"></canvas>
+                    </div>
+                </div>
+                <div class="canvas-box" style="width: 100%;">
+                    <span>EKG - Vertikal Rörelse (Höjd)</span>
+                    <canvas id="ekg-canvas" class="wide" width="800" height="200"></canvas>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script type="module">
         import * as THREE from 'https://unpkg.com/three@0.150.1/build/three.module.js';
 
-        let camera, scene, renderer, target, targetDecals;
-        let reticle, hitTestSource = null, hitTestSourceRequested = false;
-        let xrSession = null;
-        let placingMode = true;
-        let hits = 0;
+        // === GLOBALA SYSTEMVARIABLER ===
+        const mainMenu = document.getElementById('main-menu');
+        const arContainer = document.getElementById('ar-container');
+        const analysContainer = document.getElementById('analys-container');
 
-        // Ljud & Avtryckare
-        let audioContext, analyser, dataArray;
-        let lastShotTime = 0;
+        // Navigering
+        document.getElementById('btn-ar').addEventListener('click', () => {
+            mainMenu.style.display = 'none';
+            arContainer.style.display = 'block';
+            requestFullscreenAndLock();
+            initARSystem();
+        });
 
-        // Fysik för struket korn
-        const frontSightEl = document.getElementById('front-sight');
-        let sightOffsetX = 0, sightOffsetY = 0;
-        let sightVelX = 0, sightVelY = 0;
-        let lastCamRot = new THREE.Euler();
+        document.getElementById('btn-2d').addEventListener('click', () => {
+            mainMenu.style.display = 'none';
+            analysContainer.style.display = 'block';
+            requestFullscreenAndLock();
+            init2DSystem();
+        });
 
-        const statusBoard = document.getElementById('statusBoard');
-        const audioStatus = document.getElementById('audio-status');
-        const placeBtn = document.getElementById('place-btn');
-        const raycaster = new THREE.Raycaster();
-
-        // --- Startsekvens & Helskärm ---
-        document.getElementById('btn-start').addEventListener('click', async () => {
+        async function requestFullscreenAndLock() {
             try {
                 if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
                 if (screen.orientation && screen.orientation.lock) await screen.orientation.lock("landscape");
-            } catch (err) {}
+            } catch(e) {}
+        }
 
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                const source = audioContext.createMediaStreamSource(stream);
-                analyser = audioContext.createAnalyser();
-                source.connect(analyser);
-                dataArray = new Uint8Array(analyser.frequencyBinCount);
-                listenForTrigger();
-                audioStatus.innerText = "Mic: AKTIV"; audioStatus.style.color = "#00e676";
-            } catch(e) {
-                audioStatus.innerText = "Mic: NEKAD"; audioStatus.style.color = "#ff1744";
-            }
 
-            document.getElementById('start-screen').style.display = 'none';
-            document.getElementById('overlay-ui').style.display = 'flex';
-            
-            init3D();
-            startAR();
-        });
+        // ==========================================
+        // === AR-SYSTEM (THREE.JS + MIC + GYRO) ===
+        // ==========================================
+        let arInitialized = false;
+        function initARSystem() {
+            if(arInitialized) return;
+            arInitialized = true;
 
-        function init3D() {
+            let camera, scene, renderer, target, targetDecals;
+            let reticle, hitTestSource = null, hitTestSourceRequested = false;
+            let placingMode = true;
+            let hits = 0;
+
+            let audioContext, analyser, dataArray;
+            let lastShotTime = 0;
+
+            const frontSightEl = document.getElementById('front-sight');
+            let sightOffsetX = 0, sightOffsetY = 0, sightVelX = 0, sightVelY = 0;
+            let lastCamRot = new THREE.Euler();
+            const statusBoard = document.getElementById('statusBoard');
+            const raycaster = new THREE.Raycaster();
+
+            // Init Three.js
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 50);
             scene.add(new THREE.AmbientLight(0xffffff, 0.8));
@@ -152,192 +238,213 @@
             renderer.setPixelRatio(window.devicePixelRatio);
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.xr.enabled = true;
-            document.body.appendChild(renderer.domElement);
+            arContainer.insertBefore(renderer.domElement, arContainer.firstChild);
 
-            createSimpleTarget();
-            createReticle();
-
-            document.getElementById('clear-btn').addEventListener('click', () => {
-                while(targetDecals.children.length > 0) targetDecals.remove(targetDecals.children[0]);
-                hits = 0; document.getElementById('hit-count').innerText = 0;
-                statusBoard.innerText = "TAVLA RENSAD";
-            });
-
-            document.getElementById('move-btn').addEventListener('click', () => {
-                target.visible = false; placingMode = true; statusBoard.innerText = "SKANNA VÄGGEN";
-            });
-
-            // Placera på VÄGG (normal-logik)
-            placeBtn.addEventListener('click', () => {
-                if (reticle.visible) {
-                    target.position.setFromMatrixPosition(reticle.matrix);
-                    target.quaternion.setFromRotationMatrix(reticle.matrix);
-                    
-                    // När WebXR hittar en yta är Y-axeln normalen (pekar rakt ut från väggen).
-                    // En PlaneGeometry byggs vänd mot Z. Vi roterar tavlan så Z pekar åt samma håll som Y.
-                    target.rotateX(-Math.PI / 2);
-                    
-                    target.visible = true;
-                    placingMode = false;
-                    placeBtn.style.display = 'none';
-                    statusBoard.innerText = "HÅLL STRUKET KORN";
-                }
-            });
-
-            window.addEventListener('resize', onWindowResize);
-            renderer.setAnimationLoop(render);
-        }
-
-        async function startAR() {
-            if (navigator.xr) {
-                const sessionInit = { requiredFeatures: ['hit-test'], optionalFeatures: ['dom-overlay'], domOverlay: { root: document.getElementById('overlay-ui') } };
-                navigator.xr.requestSession('immersive-ar', sessionInit).then((session) => {
-                    renderer.xr.setSession(session);
-                    xrSession = session;
-                });
-            }
-        }
-
-        // --- Enkel Träfftavla ---
-        function createSimpleTarget() {
-            const canvas = document.createElement('canvas');
-            canvas.width = 512; canvas.height = 512;
+            // Tavla
+            const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512;
             const ctx = canvas.getContext('2d');
-            
-            // Pappersbakgrund
             ctx.fillStyle = '#e3dac9'; ctx.fillRect(0, 0, 512, 512);
+            ctx.beginPath(); ctx.arc(256, 256, 200, 0, Math.PI * 2); ctx.fillStyle = '#111'; ctx.fill();
+            ctx.beginPath(); ctx.arc(256, 256, 15, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
             
-            // Svart cirkel
-            ctx.beginPath(); ctx.arc(256, 256, 200, 0, Math.PI * 2);
-            ctx.fillStyle = '#111'; ctx.fill();
-            
-            // Liten vit Bullseye
-            ctx.beginPath(); ctx.arc(256, 256, 15, 0, Math.PI * 2);
-            ctx.fillStyle = '#fff'; ctx.fill();
-            
-            const texture = new THREE.CanvasTexture(canvas);
-            const geometry = new THREE.PlaneGeometry(0.4, 0.4); // 40x40 cm
-            const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
-            target = new THREE.Mesh(geometry, material);
-            target.visible = false;
-            scene.add(target);
+            target = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.4), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(canvas), side: THREE.DoubleSide }));
+            target.visible = false; scene.add(target);
+            targetDecals = new THREE.Group(); target.add(targetDecals);
 
-            targetDecals = new THREE.Group();
-            target.add(targetDecals);
-        }
+            // Reticle
+            reticle = new THREE.Mesh(new THREE.RingGeometry(0.08, 0.1, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x00ff00 }));
+            reticle.matrixAutoUpdate = false; reticle.visible = false; scene.add(reticle);
 
-        function createReticle() {
-            const geometry = new THREE.RingGeometry(0.08, 0.1, 32).rotateX(-Math.PI / 2);
-            const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-            reticle = new THREE.Mesh(geometry, material);
-            reticle.matrixAutoUpdate = false; reticle.visible = false;
-            scene.add(reticle);
-        }
+            // Mic
+            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                audioContext.createMediaStreamSource(stream).connect(analyser);
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+                listenForMic();
+                document.getElementById('audio-status').innerText = "Mic: AKTIV";
+            }).catch(() => document.getElementById('audio-status').innerText = "Mic: FEL");
 
-        // --- Avtryckare & Fysik ---
-        function listenForTrigger() {
-            requestAnimationFrame(listenForTrigger);
-            if (!audioContext || placingMode) return;
-
-            analyser.getByteFrequencyData(dataArray);
-            if (Math.max(...dataArray) > 150 && (Date.now() - lastShotTime) > 800) {
-                lastShotTime = Date.now();
-                fireShot();
-            }
-        }
-
-        function fireShot() {
-            // Skapa visuell rekyl
-            frontSightEl.querySelector('.white-dot').style.background = "red";
-            sightVelY -= 30; // Vapnet hoppar upp!
-            setTimeout(() => frontSightEl.querySelector('.white-dot').style.background = "#fff", 100);
-
-            // Beräkna skottets riktning baserat på siktets felställning!
-            // Om kornet är åt höger (positiv X), pekar pipan åt VÄNSTER jämfört med ögat.
-            const vecX = (sightOffsetX / (window.innerWidth / 2));
-            const vecY = -(sightOffsetY / (window.innerHeight / 2));
-            
-            raycaster.setFromCamera(new THREE.Vector2(vecX, vecY), camera);
-            const intersects = raycaster.intersectObject(target);
-
-            if (intersects.length > 0) {
-                const localHit = target.worldToLocal(intersects[0].point.clone());
-                
-                const holeGeo = new THREE.CircleGeometry(0.005, 16);
-                const holeMat = new THREE.MeshBasicMaterial({ color: 0xff0000, depthTest: false }); // Röda skotthål för synlighet i svarta tavlan
-                const bulletHole = new THREE.Mesh(holeGeo, holeMat);
-                bulletHole.position.set(localHit.x, localHit.y, 0.001);
-                targetDecals.add(bulletHole);
-
-                hits++;
-                document.getElementById('hit-count').innerText = hits;
-                statusBoard.innerText = "TRÄFF!"; statusBoard.style.color = "#00ff00";
-            } else {
-                statusBoard.innerText = "BOM!"; statusBoard.style.color = "#ff4444";
-            }
-        }
-
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        function render(timestamp, frame) {
-            if (frame) {
-                // --- SIKT-FYSIK (Gyro) ---
-                const currentRot = camera.rotation;
-                let dX = currentRot.x - lastCamRot.x; // Pitch
-                let dY = currentRot.y - lastCamRot.y; // Yaw
-
-                // Om vi inte har ett extremt ryck (vilket ofta är ett wrap-around-fel)
-                if(Math.abs(dX) < 0.3 && Math.abs(dY) < 0.3) {
-                    // Tröghet - Siktet släpar efter när du roterar kameran
-                    sightVelX -= dY * 1500; 
-                    sightVelY += dX * 1500; 
+            function listenForMic() {
+                requestAnimationFrame(listenForMic);
+                if (!audioContext || placingMode) return;
+                analyser.getByteFrequencyData(dataArray);
+                if (Math.max(...dataArray) > 150 && (Date.now() - lastShotTime) > 800) {
+                    lastShotTime = Date.now(); fireShotAR();
                 }
-                lastCamRot.copy(currentRot);
+            }
 
-                // Applicera fjädringsfysik (Spring physics)
-                sightVelX *= 0.75; sightVelY *= 0.75; // Friktion
-                sightOffsetX += sightVelX; sightOffsetY += sightVelY;
+            function fireShotAR() {
+                frontSightEl.querySelector('.white-dot').style.background = "red";
+                sightVelY -= 30; setTimeout(() => frontSightEl.querySelector('.white-dot').style.background = "#fff", 100);
+
+                const vecX = (sightOffsetX / (window.innerWidth / 2));
+                const vecY = -(sightOffsetY / (window.innerHeight / 2));
+                raycaster.setFromCamera(new THREE.Vector2(vecX, vecY), camera);
                 
-                // Dra alltid tillbaka till mitten (struket korn)
-                sightOffsetX += (0 - sightOffsetX) * 0.15;
-                sightOffsetY += (0 - sightOffsetY) * 0.15;
+                const intersects = raycaster.intersectObject(target);
+                if (intersects.length > 0) {
+                    const hit = target.worldToLocal(intersects[0].point.clone());
+                    const hole = new THREE.Mesh(new THREE.CircleGeometry(0.005, 16), new THREE.MeshBasicMaterial({ color: 0xff0000, depthTest: false }));
+                    hole.position.set(hit.x, hit.y, 0.001); targetDecals.add(hole);
+                    hits++; document.getElementById('ar-hit-count').innerText = hits;
+                    statusBoard.innerText = "TRÄFF!"; statusBoard.style.color = "#00ff00";
+                } else {
+                    statusBoard.innerText = "BOM!"; statusBoard.style.color = "#ff4444";
+                }
+            }
 
-                // Maxa ur hur långt det kan flyga
-                sightOffsetX = Math.max(-80, Math.min(80, sightOffsetX));
-                sightOffsetY = Math.max(-60, Math.min(60, sightOffsetY));
+            // WebXR Start
+            if (navigator.xr) {
+                navigator.xr.requestSession('immersive-ar', { requiredFeatures: ['hit-test'], optionalFeatures: ['dom-overlay'], domOverlay: { root: document.getElementById('ar-ui') } })
+                .then(session => { renderer.xr.setSession(session); statusBoard.innerText = "SKANNA VÄGGEN"; });
+            }
 
-                frontSightEl.style.transform = `translate(${sightOffsetX}px, ${sightOffsetY}px)`;
+            // Buttons
+            document.getElementById('place-btn').addEventListener('click', () => {
+                if (reticle.visible) {
+                    target.position.setFromMatrixPosition(reticle.matrix); target.quaternion.setFromRotationMatrix(reticle.matrix);
+                    target.rotateX(-Math.PI / 2); target.visible = true; placingMode = false;
+                    document.getElementById('place-btn').style.display = 'none'; statusBoard.innerText = "HÅLL STRUKET KORN";
+                }
+            });
+            document.getElementById('ar-clear-btn').addEventListener('click', () => {
+                while(targetDecals.children.length > 0) targetDecals.remove(targetDecals.children[0]);
+                hits = 0; document.getElementById('ar-hit-count').innerText = 0;
+            });
+            document.getElementById('ar-move-btn').addEventListener('click', () => { target.visible = false; placingMode = true; statusBoard.innerText = "SKANNA VÄGGEN"; });
 
-                // --- HIT-TEST LOGIK ---
-                if (placingMode) {
-                    const referenceSpace = renderer.xr.getReferenceSpace();
-                    const session = renderer.xr.getSession();
+            window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
 
-                    if (!hitTestSourceRequested) {
-                        session.requestReferenceSpace('viewer').then((refSpace) => {
-                            session.requestHitTestSource({ space: refSpace }).then((source) => { hitTestSource = source; });
-                        });
-                        hitTestSourceRequested = true;
-                    }
+            renderer.setAnimationLoop((timestamp, frame) => {
+                if (frame) {
+                    const rot = camera.rotation;
+                    let dX = rot.x - lastCamRot.x, dY = rot.y - lastCamRot.y;
+                    if(Math.abs(dX) < 0.3 && Math.abs(dY) < 0.3) { sightVelX -= dY * 1500; sightVelY += dX * 1500; }
+                    lastCamRot.copy(rot);
+                    sightVelX *= 0.75; sightVelY *= 0.75; sightOffsetX += sightVelX; sightOffsetY += sightVelY;
+                    sightOffsetX += (0 - sightOffsetX) * 0.15; sightOffsetY += (0 - sightOffsetY) * 0.15;
+                    sightOffsetX = Math.max(-80, Math.min(80, sightOffsetX)); sightOffsetY = Math.max(-60, Math.min(60, sightOffsetY));
+                    frontSightEl.style.transform = `translate(${sightOffsetX}px, ${sightOffsetY}px)`;
 
-                    if (hitTestSource) {
-                        const hitTestResults = frame.getHitTestResults(hitTestSource);
-                        if (hitTestResults.length > 0) {
-                            const hit = hitTestResults[0];
-                            reticle.visible = true;
-                            reticle.matrix.fromArray(hit.getPose(referenceSpace).transform.matrix);
-                            placeBtn.style.display = 'block';
-                        } else {
-                            reticle.visible = false; placeBtn.style.display = 'none';
+                    if (placingMode) {
+                        const refSpace = renderer.xr.getReferenceSpace();
+                        if (!hitTestSourceRequested) {
+                            renderer.xr.getSession().requestReferenceSpace('viewer').then(rs => renderer.xr.getSession().requestHitTestSource({ space: rs }).then(s => hitTestSource = s));
+                            hitTestSourceRequested = true;
+                        }
+                        if (hitTestSource) {
+                            const hits = frame.getHitTestResults(hitTestSource);
+                            if (hits.length > 0) {
+                                reticle.visible = true; reticle.matrix.fromArray(hits[0].getPose(refSpace).transform.matrix);
+                                document.getElementById('place-btn').style.display = 'block';
+                            } else { reticle.visible = false; document.getElementById('place-btn').style.display = 'none'; }
                         }
                     }
                 }
+                renderer.render(scene, camera);
+            });
+        }
+
+        // ==========================================
+        // === 2D ANALYS-SYSTEM (CANVAS) ===
+        // ==========================================
+        let analysInitialized = false;
+        function init2DSystem() {
+            if(analysInitialized) return;
+            analysInitialized = true;
+
+            const tCtx = document.getElementById('target-canvas').getContext('2d');
+            const eCtx = document.getElementById('ekg-canvas').getContext('2d');
+            const hCtx = document.getElementById('heatmap-canvas').getContext('2d');
+            
+            let aimX = 50, aimY = 50, trace = [], ekg = new Array(200).fill(50), shots = [], time = 0, isShooting = false, biasX = 0, biasY = 0;
+
+            function drawBg(ctx, w, h, dark=false) {
+                ctx.fillStyle = dark ? '#111' : '#e3dac9'; ctx.fillRect(0,0,w,h);
+                ctx.lineWidth = 2; const cx = w/2, cy = h/2, maxR = w*0.45, step = maxR/10;
+                for(let i=1; i<=10; i++) {
+                    ctx.beginPath(); ctx.arc(cx, cy, maxR - (i-1)*step, 0, Math.PI*2);
+                    if(i>6) { ctx.fillStyle = '#222'; ctx.fill(); ctx.strokeStyle = '#eee'; } else ctx.strokeStyle = '#222';
+                    ctx.stroke();
+                }
             }
-            renderer.render(scene, camera);
+
+            function loop2D() {
+                if(analysContainer.style.display === 'none') return requestAnimationFrame(loop2D);
+                time += 0.05; const wob = parseFloat(document.getElementById('wobble-slider').value);
+                let tx = 50 + Math.sin(time*0.5)*2 + (Math.random()-0.5)*wob*3 + (isShooting?biasX:0);
+                let ty = 50 + Math.cos(time*0.3)*2 + (Math.random()-0.5)*wob*3 + (isShooting?biasY:0);
+                aimX += (tx-aimX)*0.2; aimY += (ty-aimY)*0.2;
+                
+                trace.push({x:aimX, y:aimY}); if(trace.length>30) trace.shift();
+                ekg.push(aimY); if(ekg.length>200) ekg.shift();
+
+                // Target
+                const tw = 300; drawBg(tCtx, tw, tw);
+                shots.forEach(s => { tCtx.fillStyle='#fff'; tCtx.beginPath(); tCtx.arc((s.x/100)*tw, (s.y/100)*tw, 4, 0, Math.PI*2); tCtx.fill(); });
+                if(trace.length>1) {
+                    tCtx.beginPath(); tCtx.strokeStyle='cyan'; tCtx.lineWidth=3;
+                    for(let i=0; i<trace.length-1; i++) { tCtx.moveTo((trace[i].x/100)*tw, (trace[i].y/100)*tw); tCtx.lineTo((trace[i+1].x/100)*tw, (trace[i+1].y/100)*tw); }
+                    tCtx.stroke();
+                }
+                tCtx.fillStyle='#fff'; tCtx.beginPath(); tCtx.arc((aimX/100)*tw, (aimY/100)*tw, 6, 0, Math.PI*2); tCtx.fill();
+
+                // EKG
+                eCtx.fillStyle='#111'; eCtx.fillRect(0,0,800,200);
+                eCtx.strokeStyle='#333'; eCtx.beginPath(); eCtx.moveTo(0,100); eCtx.lineTo(800,100); eCtx.stroke();
+                eCtx.beginPath(); eCtx.strokeStyle='#00ffff'; eCtx.lineWidth=2;
+                for(let i=0; i<ekg.length; i++) {
+                    const x = i*(800/200), y = (ekg[i]/100)*200;
+                    if(i===0) eCtx.moveTo(x,y); else eCtx.lineTo(x,y);
+                }
+                eCtx.stroke();
+
+                requestAnimationFrame(loop2D);
+            }
+
+            function updateHeatmap() {
+                const hw = 300; drawBg(hCtx, hw, hw, true);
+                shots.forEach(s => {
+                    const x = (s.x/100)*hw, y = (s.y/100)*hw;
+                    const g = hCtx.createRadialGradient(x,y,0,x,y,hw*0.08);
+                    g.addColorStop(0,'rgba(255,255,0,0.7)'); g.addColorStop(0.5,'rgba(255,0,0,0.3)'); g.addColorStop(1,'transparent');
+                    hCtx.fillStyle=g; hCtx.beginPath(); hCtx.arc(x,y,hw*0.08,0,Math.PI*2); hCtx.fill();
+                });
+            }
+
+            document.getElementById('shoot-btn-2d').onclick = () => {
+                if(isShooting) return;
+                const tech = document.getElementById('technique-select').value;
+                if(tech==='dip') { biasX=0; biasY=15; } else if(tech==='pull_left') { biasX=-12; biasY=3; } else if(tech==='pull_right') { biasX=12; biasY=2; } else { biasX=0; biasY=0; }
+                isShooting = true;
+                setTimeout(() => {
+                    let pts = 10 - Math.floor(Math.sqrt(Math.pow(aimX-50,2) + Math.pow(aimY-50,2))/4.5);
+                    if(pts<0) pts=0; shots.push({x:aimX, y:aimY, pts});
+                    
+                    document.getElementById('analys-hits').innerText = shots.length;
+                    document.getElementById('analys-avg').innerText = (shots.reduce((a,b)=>a+b.pts,0)/shots.length).toFixed(1);
+                    
+                    let fC = "#00ff00", fT = "PERFEKT AVFYRNING", fTxt = "Bra teknik. Vapnet låg stilla.";
+                    if(tech==='dip'){ fC="#ff1744"; fT="DIP (ANTICIPATION)"; fTxt="Tydlig dipp nedåt i EKG-grafen. Du spänner handen och möter rekylen innan skottet."; }
+                    else if(tech==='pull_left'){ fC="#ff9800"; fT="DRAG VÄNSTER"; fTxt="Siktet drogs åt vänster. För lite pekfinger på avtryckaren (pushing)."; }
+                    else if(tech==='pull_right'){ fC="#ff9800"; fT="DRAG HÖGER"; fTxt="Siktet drogs åt höger. För mycket pekfinger i varbygeln."; }
+                    
+                    document.getElementById('feedback-box').style.borderColor = fC;
+                    document.getElementById('feedback-title').innerText = fT; document.getElementById('feedback-title').style.color = fC;
+                    document.getElementById('feedback-text').innerText = fTxt;
+                    
+                    updateHeatmap();
+                    setTimeout(() => { isShooting=false; biasX=0; biasY=0; }, 100);
+                }, 150);
+            };
+
+            document.getElementById('reset-btn-2d').onclick = () => {
+                shots=[]; document.getElementById('analys-hits').innerText='0'; document.getElementById('analys-avg').innerText='0.0';
+                document.getElementById('feedback-title').innerText="DIAGNOSTIK"; document.getElementById('feedback-text').innerText="Väntar på skottdata..."; updateHeatmap();
+            };
+
+            updateHeatmap(); loop2D();
         }
     </script>
 </body>
