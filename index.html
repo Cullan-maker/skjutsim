@@ -10,105 +10,126 @@
         * { box-sizing: border-box; user-select: none; font-family: 'Roboto', sans-serif; }
         body { margin: 0; padding: 0; background-color: #111; color: #fff; overflow: hidden; width: 100vw; height: 100vh; }
 
+        /* --- DISKRET FEEDBACK POPUP --- */
+        #discreet-feedback {
+            position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 32px; font-weight: 900; opacity: 0; transition: opacity 0.3s ease-out;
+            pointer-events: none; z-index: 1000; text-shadow: 0 2px 5px rgba(0,0,0,0.8); letter-spacing: 2px;
+        }
+
         /* --- HUVUDMENY --- */
         #main-menu {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: linear-gradient(135deg, #1a1a1a, #0a0a0a);
             display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000;
         }
-        #main-menu h1 { color: #00ffff; font-size: 40px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 4px 10px rgba(0,255,255,0.3); }
-        #main-menu p { color: #aaa; margin-bottom: 40px; font-size: 18px; }
+        #main-menu h1 { color: #00ffff; font-size: 35px; margin-bottom: 5px; text-transform: uppercase; text-shadow: 0 4px 10px rgba(0,255,255,0.3); }
+        #main-menu p { color: #aaa; margin-bottom: 30px; font-size: 16px; }
         
         .menu-btn-container { display: flex; gap: 20px; }
         .menu-btn {
-            background: #222; border: 2px solid #444; color: #fff; padding: 30px 40px; font-size: 20px; font-weight: bold;
-            border-radius: 10px; cursor: pointer; transition: 0.3s; display: flex; flex-direction: column; align-items: center; gap: 10px; width: 250px; text-transform: uppercase;
+            background: #222; border: 2px solid #444; color: #fff; padding: 20px; font-size: 18px; font-weight: bold;
+            border-radius: 10px; cursor: pointer; transition: 0.3s; display: flex; flex-direction: column; align-items: center; gap: 10px; width: 220px; text-transform: uppercase;
         }
-        .menu-btn:hover { background: #333; transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
-        .menu-btn span { font-size: 12px; color: #888; text-transform: none; font-weight: normal; text-align: center; }
-        
-        #btn-ar { border-color: #2e7d32; }
-        #btn-ar:hover { border-color: #4caf50; box-shadow: 0 10px 20px rgba(76, 175, 80, 0.2); }
-        #btn-2d { border-color: #007bff; }
-        #btn-2d:hover { border-color: #00e5ff; box-shadow: 0 10px 20px rgba(0, 229, 255, 0.2); }
+        .menu-btn span { font-size: 11px; color: #888; text-transform: none; font-weight: normal; text-align: center; line-height: 1.3;}
+        #btn-ar { border-color: #2e7d32; } #btn-2d { border-color: #007bff; }
 
-        /* --- GEMENSAMMA TILLBAKA-KNAPPAR --- */
+        /* --- GEMENSAM TILLBAKA-KNAPP --- */
         .back-btn {
             position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); color: #fff; border: 1px solid #555;
-            padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; z-index: 999; pointer-events: auto;
+            padding: 8px 12px; border-radius: 5px; cursor: pointer; font-weight: bold; z-index: 999; pointer-events: auto; font-size: 12px;
         }
 
         /* --- AR LÄGE STYLES --- */
-        #ar-container { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        #ar-container { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; }
         #ar-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; pointer-events: none; z-index: 10; }
-        #ar-header { padding: 10px 20px 10px 100px; background: linear-gradient(rgba(0,0,0,0.9), transparent); display: flex; justify-content: space-between; align-items: flex-start; pointer-events: auto; }
-        .stat-box { background: rgba(0,0,0,0.6); padding: 5px 10px; border-radius: 5px; font-size: 16px; margin-bottom: 5px; border-left: 3px solid #555;}
-        .stat-box span { font-weight: bold; font-size: 20px; color: #00ffff;}
-        #statusBoard { font-size: 24px; font-weight: 900; color: #ffeb3b; text-shadow: 2px 2px 4px #000; text-align: center; flex-grow: 1; margin-top: 5px;}
-        .controls { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
-        button.action-btn { background: #2e7d32; color: #fff; border: 2px solid #1b5e20; padding: 10px 15px; font-size: 14px; font-weight: bold; border-radius: 5px; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 0 #1b5e20; pointer-events: auto; }
-        button.action-btn:active { transform: translateY(4px); box-shadow: 0 0 0 #1b5e20; }
-        #place-btn { background: #ff9800; border-color: #e65100; box-shadow: 0 4px 0 #e65100; font-size: 18px; padding: 15px 25px; display: none; margin: auto;}
+        #ar-header { padding: 10px 20px 10px 120px; background: linear-gradient(rgba(0,0,0,0.9), transparent); display: flex; justify-content: space-between; align-items: flex-start; pointer-events: auto; }
+        .stat-box { background: rgba(0,0,0,0.6); padding: 5px 10px; border-radius: 5px; font-size: 14px; margin-bottom: 5px; border-left: 3px solid #555;}
+        .stat-box span { font-weight: bold; font-size: 18px; color: #00ffff;}
+        #statusBoard { font-size: 20px; font-weight: 900; color: #ffeb3b; text-shadow: 2px 2px 4px #000; text-align: center; flex-grow: 1; margin-top: 5px;}
+        .controls { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+        button.action-btn { background: #2e7d32; color: #fff; border: 2px solid #1b5e20; padding: 8px 12px; font-size: 12px; font-weight: bold; border-radius: 5px; cursor: pointer; text-transform: uppercase; pointer-events: auto; }
+        #place-btn { background: #ff9800; border-color: #e65100; font-size: 16px; padding: 15px 25px; display: none; margin: auto; box-shadow: 0 4px 0 #e65100; pointer-events: auto;}
         
         #glock-sight { position: absolute; bottom: 5%; left: 50%; transform: translateX(-50%); width: 300px; height: 150px; pointer-events: none; display: flex; justify-content: center; align-items: flex-end; }
         .rear-sight { width: 180px; height: 70px; border: 35px solid #1a1a1a; border-top: none; position: absolute; bottom: 0; border-radius: 4px; box-shadow: inset 0 5px 15px rgba(0,0,0,0.8); z-index: 2; }
         .front-sight { width: 30px; height: 80px; background: #222; position: absolute; bottom: 20px; display: flex; justify-content: center; padding-top: 10px; border-radius: 3px 3px 0 0; box-shadow: 0 -2px 5px rgba(0,0,0,0.5); z-index: 1; transition: transform 0.05s ease-out; }
         .white-dot { width: 16px; height: 16px; background: #fff; border-radius: 50%; box-shadow: 0 0 5px rgba(255,255,255,0.8); }
-        #audio-status { position: absolute; bottom: 10px; left: 10px; font-size: 12px; color: #ffeb3b; background: rgba(0,0,0,0.5); padding: 5px; border-radius: 5px;}
+        #audio-status { position: absolute; bottom: 10px; left: 10px; font-size: 10px; color: #ffeb3b; background: rgba(0,0,0,0.5); padding: 5px; border-radius: 5px;}
 
-        /* --- 2D LÄGE STYLES --- */
-        #analys-container { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #121212; overflow-y: auto; padding: 20px; }
-        .analys-wrapper { display: flex; gap: 20px; max-width: 1200px; margin: 40px auto 0 auto; height: calc(100% - 60px); }
-        .panel { background: #1e1e1e; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border: 1px solid #333; display: flex; flex-direction: column;}
-        .panel-left { flex: 1; max-width: 350px; }
-        .panel-right { flex: 2; display: flex; flex-direction: column; gap: 15px; overflow-y: auto;}
+        /* --- 2D LÄGE STYLES (RESPONSIV GRID) --- */
+        #analys-container { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #121212; padding: 45px 10px 10px 10px; }
         
-        .controls-2d { display: grid; gap: 15px; margin-top: 20px;}
-        .controls-2d label { font-size: 12px; color: #aaa; font-weight: bold; text-transform: uppercase; }
-        .controls-2d select, .controls-2d input[type=range] { width: 100%; padding: 10px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 5px; outline: none; }
-        .btn-row { display: flex; gap: 10px; margin-top: 10px; }
+        .grid-layout { display: grid; grid-template-columns: 250px 1fr 1fr; grid-template-rows: 60% 40%; gap: 10px; width: 100%; height: 100%; }
+        .panel { background: #1e1e1e; padding: 10px; border-radius: 8px; border: 1px solid #333; display: flex; flex-direction: column; overflow: hidden; }
         
-        #shoot-btn-2d { background: #2e7d32; padding: 15px; border:none; border-radius:5px; color:white; font-weight:bold; cursor:pointer; flex:2; box-shadow: 0 4px 0 #1b5e20;}
-        #reset-btn-2d { background: #d32f2f; padding: 15px; border:none; border-radius:5px; color:white; font-weight:bold; cursor:pointer; flex:1; box-shadow: 0 4px 0 #b71c1c;}
+        .controls-col { grid-column: 1; grid-row: 1 / span 2; justify-content: space-between;}
+        .controls-col h2 { font-size: 16px; color: #00ffff; margin: 0 0 10px 0; }
+        .stat-row { display: flex; justify-content: space-between; color: #aaa; font-size: 14px; font-weight: bold; margin-bottom: 10px; }
+        .stat-row span { color: #fff; }
         
-        #feedback-box { border-left: 4px solid #00ffff; padding-left: 15px; margin-top: 20px; background: rgba(0,255,255,0.05); padding: 15px; border-radius: 0 5px 5px 0;}
-        #feedback-title { font-weight: 900; color: #00ffff; font-size: 16px; margin-bottom: 5px; text-transform: uppercase;}
-        #feedback-text { font-size: 14px; line-height: 1.5; color: #ccc; }
+        .input-group { margin-bottom: 10px; }
+        .input-group label { font-size: 10px; color: #888; text-transform: uppercase; font-weight: bold; }
+        .input-group select { width: 100%; padding: 8px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 4px; font-size: 12px; }
         
-        .canvas-row { display: flex; gap: 15px; justify-content: center; }
-        .canvas-box { display: flex; flex-direction: column; align-items: center; background: #000; padding: 10px; border-radius: 5px; border: 1px solid #333;}
-        .canvas-box span { font-size: 12px; color: #888; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
-        canvas { background: #000; }
-        canvas.square { width: 250px; height: 250px; }
-        canvas.wide { width: 100%; height: 150px; }
+        .btn-row { display: flex; gap: 5px; }
+        .btn-row button { padding: 10px; font-weight: bold; border-radius: 4px; border: none; color: white; cursor: pointer; font-size: 12px; text-transform: uppercase;}
+        #shoot-btn-2d { background: #2e7d32; flex: 2; }
+        #cal-btn-2d { background: #007bff; flex: 1.5; }
+        #reset-btn-2d { background: #d32f2f; flex: 1; }
+
+        #feedback-box { border-left: 3px solid #00ffff; background: rgba(0,255,255,0.05); padding: 10px; margin-top: 10px; flex-grow: 1; overflow-y: auto;}
+        #feedback-title { font-weight: 900; color: #00ffff; font-size: 12px; margin-bottom: 5px;}
+        #feedback-text { font-size: 11px; line-height: 1.4; color: #ccc; }
+
+        .canvas-title { font-size: 10px; color: #888; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; text-align: center; }
+        .target-col { grid-column: 2; grid-row: 1; align-items: center;}
+        .heatmap-col { grid-column: 3; grid-row: 1; align-items: center;}
+        .ekg-col { grid-column: 2 / span 2; grid-row: 2; }
+        
+        canvas { background: #000; border-radius: 4px; border: 1px solid #444; object-fit: contain; }
+        .square-canvas { width: 100%; height: calc(100% - 20px); max-height: 100%; aspect-ratio: 1/1; }
+        .wide-canvas { width: 100%; height: calc(100% - 20px); }
     </style>
 </head>
 <body>
 
+    <div id="discreet-feedback">TRÄFF</div>
+
     <div id="main-menu">
         <h1>Simulator Pro</h1>
-        <p>Välj träningsläge för din Pixel 7 Pro</p>
+        <p>Välj träningsläge för Pixel 7 Pro</p>
         <div class="menu-btn-container">
             <div class="menu-btn" id="btn-ar">
                 AR PRECISION
-                <span>Klistra tavla på väggen och skjut med äkta attrapp (kräver mic & gyro).</span>
+                <span>Klistra tavla på väggen eller fritt i luften. Gyrobaserat sikte.</span>
             </div>
             <div class="menu-btn" id="btn-2d">
                 2D ANALYS
-                <span>Träna skytteteknik, se EKG-grafer och heatmap för diagnostik.</span>
+                <span>Träna med lasertränar-fysik. EKG-graf och heatmap.</span>
             </div>
         </div>
     </div>
 
     <div id="ar-container">
-        <button class="back-btn" onclick="location.reload()">Tillbaka till Meny</button>
+        <button class="back-btn" onclick="location.reload()">Meny</button>
         <div id="ar-ui">
             <div id="ar-header">
-                <div><div class="stat-box">Träffar: <span id="ar-hit-count">0</span></div></div>
-                <div id="statusBoard">STARTAR KAMERA...</div>
+                <div>
+                    <div class="stat-box">Träffar: <span id="ar-hit-count">0</span></div>
+                    <div class="stat-box" style="border-left-color: #e91e63;">Avstånd: <span id="ar-distance" style="color:#ff4081;">--</span> m</div>
+                </div>
+                
+                <div id="statusBoard">SKANNA VÄGGEN ELLER SKAPA I LUFTEN</div>
+                
                 <div class="controls">
-                    <button id="ar-clear-btn" class="action-btn" style="background: #d32f2f; border-color: #b71c1c;">Rensa</button>
-                    <button id="ar-move-btn" class="action-btn">Flytta</button>
+                    <button id="ar-clear-btn" class="action-btn" style="background: #d32f2f; border-color: #b71c1c; width:100%;">Rensa Tavla</button>
+                    <button id="ar-move-btn" class="action-btn" style="width:100%;">Ny Skanning</button>
+                    
+                    <div style="background: rgba(0,0,0,0.7); padding: 5px; border-radius: 5px; display: flex; gap: 5px; margin-top: 5px; pointer-events: auto;">
+                        <input type="number" id="air-dist-input" value="10" min="1" max="50" style="width: 50px; background: #222; color: white; border: 1px solid #555; border-radius: 3px; text-align: center; font-weight: bold;">
+                        <button id="air-spawn-btn" class="action-btn" style="background: #9c27b0; border-color: #7b1fa2; padding: 5px 10px;">Skapa i luften</button>
+                    </div>
                 </div>
             </div>
             <button id="place-btn" class="action-btn">FÄST PÅ VÄGG</button>
@@ -121,57 +142,51 @@
     </div>
 
     <div id="analys-container">
-        <button class="back-btn" onclick="location.reload()">Tillbaka till Meny</button>
+        <button class="back-btn" onclick="location.reload()">Meny</button>
         
-        <div class="analys-wrapper">
-            <div class="panel panel-left">
-                <h2 style="color:#00ffff; margin-top:0;">Inställningar</h2>
-                <div style="display:flex; justify-content:space-between; color:#aaa; font-weight:bold; margin-bottom: 10px;">
-                    <div>Träffar: <span id="analys-hits" style="color:#fff;">0</span></div>
-                    <div>Snitt: <span id="analys-avg" style="color:#fff;">0.0</span></div>
+        <div class="grid-layout">
+            <div class="panel controls-col">
+                <h2>Analysverktyg</h2>
+                <div class="stat-row">
+                    <div>Träffar: <span id="analys-hits">0</span></div>
+                    <div>Snitt: <span id="analys-avg">0.0</span></div>
                 </div>
 
-                <div class="controls-2d">
-                    <div>
-                        <label>Simulera Teknik-fel</label>
-                        <select id="technique-select">
-                            <option value="neutral">Neutral (Perfekt)</option>
-                            <option value="dip">Dippar (Anticiperar)</option>
-                            <option value="pull_left">Ryck Vänster (Pushing)</option>
-                            <option value="pull_right">Ryck Höger (Milking)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label>Vapen-skakningar</label>
-                        <input type="range" id="wobble-slider" min="0.5" max="5" step="0.1" value="1.5">
-                    </div>
-                    <div class="btn-row">
-                        <button id="shoot-btn-2d">Skjut</button>
-                        <button id="reset-btn-2d">Rensa</button>
-                    </div>
+                <div class="input-group">
+                    <label>Injektera Teknik-fel</label>
+                    <select id="technique-select">
+                        <option value="neutral">Inget fel (Neutral)</option>
+                        <option value="dip">Dippar (Anticiperar)</option>
+                        <option value="pull_left">Ryck Vänster (Pushing)</option>
+                        <option value="pull_right">Ryck Höger (Milking)</option>
+                    </select>
+                </div>
+
+                <div class="btn-row">
+                    <button id="shoot-btn-2d">Skjut</button>
+                    <button id="cal-btn-2d">Kalibrera Gyro</button>
+                    <button id="reset-btn-2d">Rensa</button>
                 </div>
 
                 <div id="feedback-box">
                     <div id="feedback-title">DIAGNOSTIK</div>
-                    <div id="feedback-text">Väntar på skottdata...</div>
+                    <div id="feedback-text">Kalibrera gyrot genom att rikta telefonen framåt och klicka Kalibrera. Skjut sedan för analys.</div>
                 </div>
             </div>
 
-            <div class="panel panel-right">
-                <div class="canvas-row">
-                    <div class="canvas-box">
-                        <span>Live Sikte</span>
-                        <canvas id="target-canvas" class="square" width="300" height="300"></canvas>
-                    </div>
-                    <div class="canvas-box">
-                        <span>Träffbild (Heatmap)</span>
-                        <canvas id="heatmap-canvas" class="square" width="300" height="300"></canvas>
-                    </div>
-                </div>
-                <div class="canvas-box" style="width: 100%;">
-                    <span>EKG - Vertikal Rörelse (Höjd)</span>
-                    <canvas id="ekg-canvas" class="wide" width="800" height="200"></canvas>
-                </div>
+            <div class="panel target-col">
+                <div class="canvas-title">Live Sikte (Gyro)</div>
+                <canvas id="target-canvas" class="square-canvas"></canvas>
+            </div>
+
+            <div class="panel heatmap-col">
+                <div class="canvas-title">Träffbild (Heatmap)</div>
+                <canvas id="heatmap-canvas" class="square-canvas"></canvas>
+            </div>
+
+            <div class="panel ekg-col">
+                <div class="canvas-title">Vertikal Rörelse (Avfyrnings-EKG)</div>
+                <canvas id="ekg-canvas" class="wide-canvas"></canvas>
             </div>
         </div>
     </div>
@@ -179,24 +194,28 @@
     <script type="module">
         import * as THREE from 'https://unpkg.com/three@0.150.1/build/three.module.js';
 
-        // === GLOBALA SYSTEMVARIABLER ===
+        // --- GEMENSAM FEEDBACK FUNKTION ---
+        function popFeedback(text, isHit) {
+            const el = document.getElementById('discreet-feedback');
+            el.innerText = text;
+            el.style.color = isHit ? "#00ff00" : "#ff1744";
+            el.style.opacity = 1;
+            setTimeout(() => { el.style.opacity = 0; }, 600);
+        }
+
+        // --- NAVIGERING OCH SETUP ---
         const mainMenu = document.getElementById('main-menu');
         const arContainer = document.getElementById('ar-container');
         const analysContainer = document.getElementById('analys-container');
 
-        // Navigering
         document.getElementById('btn-ar').addEventListener('click', () => {
-            mainMenu.style.display = 'none';
-            arContainer.style.display = 'block';
-            requestFullscreenAndLock();
-            initARSystem();
+            mainMenu.style.display = 'none'; arContainer.style.display = 'block';
+            requestFullscreenAndLock(); initARSystem();
         });
 
         document.getElementById('btn-2d').addEventListener('click', () => {
-            mainMenu.style.display = 'none';
-            analysContainer.style.display = 'block';
-            requestFullscreenAndLock();
-            init2DSystem();
+            mainMenu.style.display = 'none'; analysContainer.style.display = 'block';
+            requestFullscreenAndLock(); init2DSystem();
         });
 
         async function requestFullscreenAndLock() {
@@ -212,32 +231,31 @@
         // ==========================================
         let arInitialized = false;
         function initARSystem() {
-            if(arInitialized) return;
-            arInitialized = true;
+            if(arInitialized) return; arInitialized = true;
 
             let camera, scene, renderer, target, targetDecals;
             let reticle, hitTestSource = null, hitTestSourceRequested = false;
-            let placingMode = true;
-            let hits = 0;
-
-            let audioContext, analyser, dataArray;
-            let lastShotTime = 0;
+            let placingMode = true, hits = 0;
+            let audioContext, analyser, dataArray, lastShotTime = 0;
 
             const frontSightEl = document.getElementById('front-sight');
             let sightOffsetX = 0, sightOffsetY = 0, sightVelX = 0, sightVelY = 0;
             let lastCamRot = new THREE.Euler();
             const statusBoard = document.getElementById('statusBoard');
+            const distanceBoard = document.getElementById('ar-distance');
             const raycaster = new THREE.Raycaster();
 
-            // Init Three.js
             scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 50);
+            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 100);
             scene.add(new THREE.AmbientLight(0xffffff, 0.8));
 
+            // Transparent bakgrund för AR-kamera
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setClearColor(0x000000, 0); 
             renderer.setPixelRatio(window.devicePixelRatio);
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.xr.enabled = true;
+            renderer.xr.setReferenceSpaceType('local');
             arContainer.insertBefore(renderer.domElement, arContainer.firstChild);
 
             // Tavla
@@ -255,7 +273,7 @@
             reticle = new THREE.Mesh(new THREE.RingGeometry(0.08, 0.1, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x00ff00 }));
             reticle.matrixAutoUpdate = false; reticle.visible = false; scene.add(reticle);
 
-            // Mic
+            // Ljudavkänning
             navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = audioContext.createAnalyser();
@@ -263,7 +281,7 @@
                 dataArray = new Uint8Array(analyser.frequencyBinCount);
                 listenForMic();
                 document.getElementById('audio-status').innerText = "Mic: AKTIV";
-            }).catch(() => document.getElementById('audio-status').innerText = "Mic: FEL");
+            }).catch(() => document.getElementById('audio-status').innerText = "Mic: NEKAD");
 
             function listenForMic() {
                 requestAnimationFrame(listenForMic);
@@ -288,9 +306,10 @@
                     const hole = new THREE.Mesh(new THREE.CircleGeometry(0.005, 16), new THREE.MeshBasicMaterial({ color: 0xff0000, depthTest: false }));
                     hole.position.set(hit.x, hit.y, 0.001); targetDecals.add(hole);
                     hits++; document.getElementById('ar-hit-count').innerText = hits;
-                    statusBoard.innerText = "TRÄFF!"; statusBoard.style.color = "#00ff00";
+                    statusBoard.innerText = "HÅLL STRUKET KORN";
+                    popFeedback("TRÄFF!", true);
                 } else {
-                    statusBoard.innerText = "BOM!"; statusBoard.style.color = "#ff4444";
+                    popFeedback("BOM!", false);
                 }
             }
 
@@ -300,7 +319,7 @@
                 .then(session => { renderer.xr.setSession(session); statusBoard.innerText = "SKANNA VÄGGEN"; });
             }
 
-            // Buttons
+            // Knappar
             document.getElementById('place-btn').addEventListener('click', () => {
                 if (reticle.visible) {
                     target.position.setFromMatrixPosition(reticle.matrix); target.quaternion.setFromRotationMatrix(reticle.matrix);
@@ -314,10 +333,35 @@
             });
             document.getElementById('ar-move-btn').addEventListener('click', () => { target.visible = false; placingMode = true; statusBoard.innerText = "SKANNA VÄGGEN"; });
 
+            // Skapa i luften
+            document.getElementById('air-spawn-btn').addEventListener('click', () => {
+                const dist = parseFloat(document.getElementById('air-dist-input').value);
+                if (isNaN(dist) || dist <= 0) return;
+
+                const direction = new THREE.Vector3(0, 0, -1);
+                direction.applyQuaternion(camera.quaternion);
+                direction.multiplyScalar(dist);
+                
+                target.position.copy(camera.position).add(direction);
+                target.lookAt(camera.position);
+
+                target.visible = true;
+                placingMode = false;
+                document.getElementById('place-btn').style.display = 'none';
+                statusBoard.innerText = "HÅLL STRUKET KORN";
+            });
+
             window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
 
             renderer.setAnimationLoop((timestamp, frame) => {
                 if (frame) {
+                    // Uppdatera avstånd
+                    if (target.visible) {
+                        distanceBoard.innerText = camera.position.distanceTo(target.position).toFixed(1);
+                    } else {
+                        distanceBoard.innerText = "--";
+                    }
+
                     const rot = camera.rotation;
                     let dX = rot.x - lastCamRot.x, dY = rot.y - lastCamRot.y;
                     if(Math.abs(dX) < 0.3 && Math.abs(dY) < 0.3) { sightVelX -= dY * 1500; sightVelY += dX * 1500; }
@@ -346,19 +390,35 @@
             });
         }
 
+
         // ==========================================
-        // === 2D ANALYS-SYSTEM (CANVAS) ===
+        // === 2D ANALYS-SYSTEM (MED GYRO) ===
         // ==========================================
         let analysInitialized = false;
         function init2DSystem() {
-            if(analysInitialized) return;
-            analysInitialized = true;
+            if(analysInitialized) return; analysInitialized = true;
 
-            const tCtx = document.getElementById('target-canvas').getContext('2d');
-            const eCtx = document.getElementById('ekg-canvas').getContext('2d');
-            const hCtx = document.getElementById('heatmap-canvas').getContext('2d');
+            const tCan = document.getElementById('target-canvas'); const tCtx = tCan.getContext('2d');
+            const eCan = document.getElementById('ekg-canvas'); const eCtx = eCan.getContext('2d');
+            const hCan = document.getElementById('heatmap-canvas'); const hCtx = hCan.getContext('2d');
             
-            let aimX = 50, aimY = 50, trace = [], ekg = new Array(200).fill(50), shots = [], time = 0, isShooting = false, biasX = 0, biasY = 0;
+            tCan.width = 400; tCan.height = 400;
+            hCan.width = 400; hCan.height = 400;
+            eCan.width = 800; eCan.height = 200;
+
+            let aimX = 50, aimY = 50, trace = [], ekg = new Array(200).fill(50), shots = [];
+            let isShooting = false, biasX = 0, biasY = 0;
+            let gyroStartX = null, gyroStartY = null, rawAimX = 50, rawAimY = 50;
+
+            window.addEventListener('deviceorientation', (e) => {
+                if(analysContainer.style.display === 'none' || !e.alpha) return;
+                if(gyroStartX === null) { gyroStartX = e.alpha; gyroStartY = e.gamma; }
+                let dx = e.alpha - gyroStartX, dy = e.gamma - gyroStartY;
+                if (dx > 180) dx -= 360; if (dx < -180) dx += 360;
+                rawAimX = 50 - (dx * 3); rawAimY = 50 - (dy * 3);
+            });
+
+            document.getElementById('cal-btn-2d').onclick = () => { gyroStartX = null; aimX = 50; aimY = 50; rawAimX = 50; rawAimY = 50; };
 
             function drawBg(ctx, w, h, dark=false) {
                 ctx.fillStyle = dark ? '#111' : '#e3dac9'; ctx.fillRect(0,0,w,h);
@@ -372,43 +432,37 @@
 
             function loop2D() {
                 if(analysContainer.style.display === 'none') return requestAnimationFrame(loop2D);
-                time += 0.05; const wob = parseFloat(document.getElementById('wobble-slider').value);
-                let tx = 50 + Math.sin(time*0.5)*2 + (Math.random()-0.5)*wob*3 + (isShooting?biasX:0);
-                let ty = 50 + Math.cos(time*0.3)*2 + (Math.random()-0.5)*wob*3 + (isShooting?biasY:0);
-                aimX += (tx-aimX)*0.2; aimY += (ty-aimY)*0.2;
                 
+                aimX += (rawAimX + biasX - aimX) * 0.2; aimY += (rawAimY + biasY - aimY) * 0.2;
                 trace.push({x:aimX, y:aimY}); if(trace.length>30) trace.shift();
                 ekg.push(aimY); if(ekg.length>200) ekg.shift();
 
-                // Target
-                const tw = 300; drawBg(tCtx, tw, tw);
-                shots.forEach(s => { tCtx.fillStyle='#fff'; tCtx.beginPath(); tCtx.arc((s.x/100)*tw, (s.y/100)*tw, 4, 0, Math.PI*2); tCtx.fill(); });
+                const tw = tCan.width; drawBg(tCtx, tw, tw);
+                shots.forEach(s => { tCtx.fillStyle='#fff'; tCtx.beginPath(); tCtx.arc((s.x/100)*tw, (s.y/100)*tw, 6, 0, Math.PI*2); tCtx.fill(); });
                 if(trace.length>1) {
-                    tCtx.beginPath(); tCtx.strokeStyle='cyan'; tCtx.lineWidth=3;
+                    tCtx.beginPath(); tCtx.strokeStyle='cyan'; tCtx.lineWidth=4;
                     for(let i=0; i<trace.length-1; i++) { tCtx.moveTo((trace[i].x/100)*tw, (trace[i].y/100)*tw); tCtx.lineTo((trace[i+1].x/100)*tw, (trace[i+1].y/100)*tw); }
                     tCtx.stroke();
                 }
-                tCtx.fillStyle='#fff'; tCtx.beginPath(); tCtx.arc((aimX/100)*tw, (aimY/100)*tw, 6, 0, Math.PI*2); tCtx.fill();
+                tCtx.fillStyle='#fff'; tCtx.beginPath(); tCtx.arc((aimX/100)*tw, (aimY/100)*tw, 8, 0, Math.PI*2); tCtx.fill();
 
-                // EKG
                 eCtx.fillStyle='#111'; eCtx.fillRect(0,0,800,200);
                 eCtx.strokeStyle='#333'; eCtx.beginPath(); eCtx.moveTo(0,100); eCtx.lineTo(800,100); eCtx.stroke();
-                eCtx.beginPath(); eCtx.strokeStyle='#00ffff'; eCtx.lineWidth=2;
+                eCtx.beginPath(); eCtx.strokeStyle='#00ffff'; eCtx.lineWidth=3;
                 for(let i=0; i<ekg.length; i++) {
                     const x = i*(800/200), y = (ekg[i]/100)*200;
                     if(i===0) eCtx.moveTo(x,y); else eCtx.lineTo(x,y);
                 }
                 eCtx.stroke();
-
                 requestAnimationFrame(loop2D);
             }
 
             function updateHeatmap() {
-                const hw = 300; drawBg(hCtx, hw, hw, true);
+                const hw = hCan.width; drawBg(hCtx, hw, hw, true);
                 shots.forEach(s => {
                     const x = (s.x/100)*hw, y = (s.y/100)*hw;
                     const g = hCtx.createRadialGradient(x,y,0,x,y,hw*0.08);
-                    g.addColorStop(0,'rgba(255,255,0,0.7)'); g.addColorStop(0.5,'rgba(255,0,0,0.3)'); g.addColorStop(1,'transparent');
+                    g.addColorStop(0,'rgba(255,255,0,0.8)'); g.addColorStop(0.5,'rgba(255,0,0,0.4)'); g.addColorStop(1,'transparent');
                     hCtx.fillStyle=g; hCtx.beginPath(); hCtx.arc(x,y,hw*0.08,0,Math.PI*2); hCtx.fill();
                 });
             }
@@ -418,6 +472,7 @@
                 const tech = document.getElementById('technique-select').value;
                 if(tech==='dip') { biasX=0; biasY=15; } else if(tech==='pull_left') { biasX=-12; biasY=3; } else if(tech==='pull_right') { biasX=12; biasY=2; } else { biasX=0; biasY=0; }
                 isShooting = true;
+                
                 setTimeout(() => {
                     let pts = 10 - Math.floor(Math.sqrt(Math.pow(aimX-50,2) + Math.pow(aimY-50,2))/4.5);
                     if(pts<0) pts=0; shots.push({x:aimX, y:aimY, pts});
@@ -426,22 +481,22 @@
                     document.getElementById('analys-avg').innerText = (shots.reduce((a,b)=>a+b.pts,0)/shots.length).toFixed(1);
                     
                     let fC = "#00ff00", fT = "PERFEKT AVFYRNING", fTxt = "Bra teknik. Vapnet låg stilla.";
-                    if(tech==='dip'){ fC="#ff1744"; fT="DIP (ANTICIPATION)"; fTxt="Tydlig dipp nedåt i EKG-grafen. Du spänner handen och möter rekylen innan skottet."; }
-                    else if(tech==='pull_left'){ fC="#ff9800"; fT="DRAG VÄNSTER"; fTxt="Siktet drogs åt vänster. För lite pekfinger på avtryckaren (pushing)."; }
-                    else if(tech==='pull_right'){ fC="#ff9800"; fT="DRAG HÖGER"; fTxt="Siktet drogs åt höger. För mycket pekfinger i varbygeln."; }
+                    if(tech==='dip'){ fC="#ff1744"; fT="DIP (ANTICIPATION)"; fTxt="Tydlig dipp nedåt i EKG. Du spänner handen och möter rekylen innan skottet."; }
+                    else if(tech==='pull_left'){ fC="#ff9800"; fT="DRAG VÄNSTER"; fTxt="För lite pekfinger på avtryckaren (pushing)."; }
+                    else if(tech==='pull_right'){ fC="#ff9800"; fT="DRAG HÖGER"; fTxt="För mycket pekfinger i varbygeln."; }
                     
                     document.getElementById('feedback-box').style.borderColor = fC;
                     document.getElementById('feedback-title').innerText = fT; document.getElementById('feedback-title').style.color = fC;
                     document.getElementById('feedback-text').innerText = fTxt;
                     
-                    updateHeatmap();
+                    popFeedback(pts > 0 ? "TRÄFF!" : "BOM!", pts > 0); updateHeatmap();
                     setTimeout(() => { isShooting=false; biasX=0; biasY=0; }, 100);
                 }, 150);
             };
 
             document.getElementById('reset-btn-2d').onclick = () => {
                 shots=[]; document.getElementById('analys-hits').innerText='0'; document.getElementById('analys-avg').innerText='0.0';
-                document.getElementById('feedback-title').innerText="DIAGNOSTIK"; document.getElementById('feedback-text').innerText="Väntar på skottdata..."; updateHeatmap();
+                document.getElementById('feedback-title').innerText="DIAGNOSTIK"; document.getElementById('feedback-text').innerText="Kalibrera gyro och skjut."; updateHeatmap();
             };
 
             updateHeatmap(); loop2D();
