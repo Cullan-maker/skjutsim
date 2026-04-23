@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=landscape">
-    <title>2D Skytteteknik Analys Pro (Raw Gyro)</title>
+    <title>2D Skytteteknik Analys Pro (Gimbal Fix)</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap');
         * { box-sizing: border-box; user-select: none; font-family: 'Roboto', sans-serif; }
@@ -56,7 +56,7 @@
 <body>
 
     <div id="start-screen">
-        <h1 style="color:#00ffff;">2D Skytteteknik</h1>
+        <h1 style="color:#00ffff;">2D Analysator (Gyro Fix)</h1>
         <p style="color:#aaa; text-align:center; margin-bottom:20px;">Snurra telefonen till liggande läge innan du startar.<br>Kräver mikrofon för avtryckardetektion.</p>
         <button id="btn-start" class="action-btn">Starta Analysator</button>
     </div>
@@ -78,7 +78,7 @@
                 </select>
                 <div class="checkbox-row">
                     <label><input type="checkbox" id="inv-x"> Invert X</label>
-                    <label><input type="checkbox" id="inv-y" checked> Invert Y</label>
+                    <label><input type="checkbox" id="inv-y"> Invert Y</label>
                 </div>
             </div>
 
@@ -94,7 +94,7 @@
 
             <div id="feedback-box">
                 <div id="feedback-title">DIAGNOSTIK</div>
-                <div id="feedback-text">Kalibrera siktet.<br><br>Testa att rikta vapnet upp/ner. Om siktet rör sig åt fel håll, klicka ur "Invert Y".<br><br>Cooldown för avtryckare: 2,5s.</div>
+                <div id="feedback-text">Systemet använder nu rå rotationshastighet för att helt undvika hoppande sikte.<br><br>Eftersom siktet kan "driva" lite med tiden, klicka på <b>Centrera Sikte</b> när du står i skjutställning.<br><br>Cooldown: 2,5s.</div>
             </div>
         </div>
 
@@ -125,7 +125,7 @@
         let trace = [], ekg = new Array(200).fill(50), shots = [];
         
         let lastTriggerTime = 0, lastShotRecord = 0;
-        const cooldownTime = 2500; 
+        const cooldownTime = 2500; // 2.5 sekunder omladdningstid
 
         document.getElementById('btn-start').addEventListener('click', async () => {
             try {
@@ -148,9 +148,9 @@
                     let now = Date.now();
                     
                     if (now - lastTriggerTime < cooldownTime) {
-                        micDot.className = 'mic-dot cooldown'; 
+                        micDot.className = 'mic-dot cooldown'; // Orange
                     } else {
-                        micDot.className = 'mic-dot active'; 
+                        micDot.className = 'mic-dot active'; // Grön
                         if (Math.max(...dataArray) > 170) {
                             lastTriggerTime = now; 
                             registerShot();
@@ -164,20 +164,20 @@
             loop2D();
         });
 
-        // --- STABILT GYRO (RÅ ROTATIONSHASTIGHET - INGA HOPP) ---
+        // --- EXTREMT STABILT GYRO (Använder enbart rotationshastighet, ej absolut vinkel) ---
         window.addEventListener('devicemotion', (e) => {
             let rr = e.rotationRate;
             if(!rr || rr.beta === null) return;
 
-            // Fångar rotationshastighet (grader per sekund)
-            let rotX = rr.beta || 0;  // Tilt fram/bak
-            let rotY = rr.gamma || 0; // Tilt vänster/höger
-            let rotZ = rr.alpha || 0; // Snurr
+            // Rå hastighet i grader per sekund
+            let rotX = rr.beta;   
+            let rotY = rr.gamma;  
+            let rotZ = rr.alpha;  
 
-            // Ignorera mikroskakningar för att undvika "drift"
-            if(Math.abs(rotX) < 0.05) rotX = 0;
-            if(Math.abs(rotY) < 0.05) rotY = 0;
-            if(Math.abs(rotZ) < 0.05) rotZ = 0;
+            // Deadzone: Ignorera mikroskopiskt brus så siktet inte skakar när det ligger stilla
+            if(Math.abs(rotX) < 0.2) rotX = 0;
+            if(Math.abs(rotY) < 0.2) rotY = 0;
+            if(Math.abs(rotZ) < 0.2) rotZ = 0;
 
             const mount = document.getElementById('mount-select').value;
             const invX = document.getElementById('inv-x').checked ? -1 : 1;
@@ -185,27 +185,31 @@
             
             let moveX = 0, moveY = 0;
 
-            // Olika axlar agerar olika baserat på hur telefonen är monterad
+            // Anpassa axlarna beroende på hur mobilen sitter monterad
             if (mount === 'top') {
-                moveY = rotX; 
-                moveX = rotY; 
-            } else {
+                moveX = rotX;
                 moveY = rotY; 
-                moveX = rotZ; 
+            } else {
+                moveX = rotY;
+                moveY = rotZ; 
             }
 
             // Känslighet (Multiplier per frame)
-            const sens = 0.15; 
+            const sens = 0.25; 
 
             rawAimX += (moveX * sens * invX);
             rawAimY += (moveY * sens * invY);
 
-            // Spärra siktet från att åka oändligt långt bort
-            rawAimX = Math.max(-50, Math.min(150, rawAimX));
-            rawAimY = Math.max(-50, Math.min(150, rawAimY));
+            // Spärra siktet så det inte åker för långt utanför duken
+            rawAimX = Math.max(-20, Math.min(120, rawAimX));
+            rawAimY = Math.max(-20, Math.min(120, rawAimY));
         });
 
-        document.getElementById('cal-btn-2d').onclick = () => { rawAimX = 50; rawAimY = 50; aimX = 50; aimY = 50; };
+        // Nollställningsknapp (Eftersom relativ spårning kan driva lite med tiden)
+        document.getElementById('cal-btn-2d').onclick = () => { 
+            rawAimX = 50; rawAimY = 50; 
+            aimX = 50; aimY = 50; 
+        };
         
         document.getElementById('reset-btn-2d').onclick = () => {
             shots=[]; lastShotRecord = 0;
@@ -252,15 +256,16 @@
             document.getElementById('analys-avg').innerText = (shots.reduce((a,b)=>a+b.pts,0)/shots.length).toFixed(1);
             document.getElementById('analys-split').innerText = split > 0 ? split.toFixed(2) + "s" : "--";
             
+            // MantisX Felanalys
             let dx = aimX - 50; let dy = aimY - 50;
             let fC = "#00ff00", fT = "PERFEKT!", fTxt = "Siktet låg stilla i mitten.";
             
-            if (dy > 4 && Math.abs(dx) < 5) { fC="#ff1744"; fT="DIPPAR"; fTxt="Träffen är låg. Du anticiperar rekylen."; } 
-            else if (dx < -4 && dy > 2) { fC="#ff9800"; fT="LÅGT VÄNSTER"; fTxt="Pushat skott (för lite avtryckarfinger)."; } 
+            if (dy > 4 && Math.abs(dx) < 5) { fC="#ff1744"; fT="DIPPAR"; fTxt="Träffen är låg. Du anticiperar rekylen och trycker ner pipan."; } 
+            else if (dx < -4 && dy > 2) { fC="#ff9800"; fT="LÅGT VÄNSTER"; fTxt="Pushat skott. Krama med mer avtryckarfinger."; } 
             else if (dx < -5) { fC="#ff9800"; fT="DRAG VÄNSTER"; fTxt="Kontrollera fingrets placering på avtryckaren."; } 
-            else if (dx > 5) { fC="#ff9800"; fT="DRAG HÖGER"; fTxt="För mycket finger inne i varbygeln."; } 
-            else if (dy < -5) { fC="#ff9800"; fT="HÖGT"; fTxt="Bryter upp handleden under avfyrningen."; } 
-            else if (pts > 0 && pts < 8) { fC="#ffeb3b"; fT="OKAY"; fTxt="Generellt svaj, stabilisera stödet."; }
+            else if (dx > 5) { fC="#ff9800"; fT="DRAG HÖGER"; fTxt="Du har sannolikt för mycket finger inne i varbygeln."; } 
+            else if (dy < -5) { fC="#ff9800"; fT="HÖGT"; fTxt="Du bryter upp handleden (heeling) under avfyrningen."; } 
+            else if (pts > 0 && pts < 8) { fC="#ffeb3b"; fT="OKAY"; fTxt="Generellt svaj. Försök stabilisera ditt stöd."; }
             
             document.getElementById('feedback-box').style.borderColor = fC;
             document.getElementById('feedback-title').innerText = fT; document.getElementById('feedback-title').style.color = fC;
@@ -270,10 +275,9 @@
         }
 
         function loop2D() {
-            // Hämta trögheten från slidern! Lågt värde = jättetrög, Högt = skakig
             const inertia = parseFloat(document.getElementById('inertia-slider').value);
             
-            // Fysisk interpolation (Mjukar upp sensorbruset markant)
+            // Fysisk interpolation för att siktet ska kännas mjukt och tungt
             aimX += (rawAimX - aimX) * inertia; 
             aimY += (rawAimY - aimY) * inertia;
             
