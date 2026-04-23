@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Siktsimulator - Stabil Version</title>
+    <title>Siktsimulator (Android Edition)</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap');
 
-        * { box-sizing: border-box; user-select: none; -webkit-touch-callout: none; }
+        * { box-sizing: border-box; user-select: none; -webkit-touch-callout: none; touch-action: none; }
         body { 
             margin: 0; padding: 0; background-color: #0d0d0d; color: #fff; 
             font-family: 'Roboto', sans-serif; display: flex; height: 100vh; width: 100vw; overflow: hidden;
@@ -15,14 +15,12 @@
 
         #left-panel {
             flex: 1; height: 100%; display: flex; flex-direction: column; 
-            align-items: center; justify-content: center; padding: 10px;
-            border-right: 1px solid #333; position: relative;
+            align-items: center; justify-content: center; padding: 10px; border-right: 1px solid #333; position: relative;
         }
 
         #target-box {
-            width: 60vmin; height: 60vmin; max-width: 350px; max-height: 350px;
-            background: #1a1a1a; border-radius: 50%; /* Rund box för snyggare gräns */
-            display: flex; align-items: center; justify-content: center; position: relative;
+            width: 70vmin; height: 70vmin; max-width: 400px; max-height: 400px;
+            background: #1a1a1a; border-radius: 50%; display: flex; align-items: center; justify-content: center; position: relative;
             overflow: hidden; border: 2px solid #333;
         }
 
@@ -35,35 +33,33 @@
         canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
 
         #crosshair {
-            position: absolute; width: 14px; height: 14px; background: cyan; 
-            border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            box-shadow: 0 0 10px cyan; z-index: 10;
+            position: absolute; width: 16px; height: 16px; background: cyan; 
+            border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 10px cyan; z-index: 10;
         }
         
         .bullet-hole {
-            position: absolute; width: 8px; height: 8px; background: #fff; border-radius: 50%;
+            position: absolute; width: 10px; height: 10px; background: #fff; border-radius: 50%;
             transform: translate(-50%, -50%); box-shadow: 0 0 5px rgba(255,255,255,0.8); z-index: 5;
         }
 
-        #right-panel {
-            flex: 1; height: 100%; display: flex; flex-direction: column; padding: 15px; justify-content: space-between; overflow-y: auto;
+        #right-panel { flex: 1; height: 100%; display: flex; flex-direction: column; padding: 20px; justify-content: space-between; overflow-y: auto; }
+        
+        #debug-log { 
+            background: #000; color: #00ff00; font-family: monospace; font-size: 2vmin; 
+            padding: 10px; border: 1px solid #333; height: 10vmin; overflow-y: auto; margin-bottom: 10px;
         }
 
-        h1 { font-size: 4vmin; margin: 0; color: #00ffff; }
-        .debug-log { font-size: 1.5vmin; color: #ff5252; margin-bottom: 10px; word-wrap: break-word;}
-        .stats { background: #222; padding: 10px; border-radius: 5px; font-size: 2.5vmin; font-weight: bold; margin-bottom: 10px;}
+        h1 { font-size: 5vmin; margin: 0; color: #00ffff; }
+        .stats { background: #222; padding: 10px; border-radius: 5px; font-size: 3vmin; font-weight: bold; margin-bottom: 10px;}
 
-        .btn-group { display: flex; gap: 5px; margin-bottom: 15px; }
+        .btn-group { display: flex; gap: 10px; margin-bottom: 15px; }
         .toggle-btn {
             flex: 1; background: #222; color: #aaa; border: 2px solid #444; 
-            padding: 15px 0; font-size: 2.5vmin; font-weight: bold; border-radius: 6px; cursor: pointer;
+            padding: 15px 0; font-size: 3vmin; font-weight: bold; border-radius: 6px; cursor: pointer;
         }
         .toggle-btn.active { background: #007bff; color: #fff; border-color: #0056b3; }
 
-        .action-btn {
-            width: 100%; padding: 20px; font-size: 3vmin; font-weight: bold; color: white;
-            border: none; border-radius: 6px; cursor: pointer; margin-top: 5px;
-        }
+        .action-btn { width: 100%; padding: 25px; font-size: 4vmin; font-weight: bold; color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 10px; }
         #start-btn { background: #2e7d32; }
         #reset-btn { background: #d32f2f; display: none; }
     </style>
@@ -82,27 +78,22 @@
     <div id="right-panel">
         <div>
             <h1 id="status-text">REDO</h1>
-            <div id="error-log" class="debug-log"></div>
+            <div id="debug-log">System laddat (Android)...<br>Klicka START för att aktivera.</div>
+            
             <div class="stats">
                 Streak: <span id="streak" style="color:#ff9800">0</span> | 
                 Snitt: <span id="snitt" style="color:#00ffff">0.0</span>
             </div>
 
-            <p style="font-size: 2vmin; color:#888; margin-bottom:5px;">Riktning (Håll mobilen framför dig):</p>
+            <p style="font-size: 2.5vmin; color:#888; margin-bottom:5px;">Riktning:</p>
             <div class="btn-group">
-                <button class="toggle-btn active" id="btn-sidan" onclick="setMode('sidan')">Skärm mot dig</button>
-                <button class="toggle-btn" id="btn-ovanpa" onclick="setMode('ovanpa')">Skärm uppåt</button>
-            </div>
-
-            <p style="font-size: 2vmin; color:#888; margin-bottom:5px;">Skjut med:</p>
-            <div class="btn-group">
-                <button class="toggle-btn active" id="btn-skarm" onclick="setTrigger('skarm')">Peka på skärm</button>
-                <button class="toggle-btn" id="btn-ljud" onclick="setTrigger('ljud')">Ljud (Klick)</button>
+                <button class="toggle-btn active" id="btn-sidan" onclick="setMode('sidan')">På Sidan</button>
+                <button class="toggle-btn" id="btn-ovanpa" onclick="setMode('ovanpa')">Ovanpå</button>
             </div>
         </div>
 
         <div>
-            <button class="action-btn" id="start-btn">GE TILLÅTELSER & STARTA</button>
+            <button class="action-btn" id="start-btn">STARTA SYSTEMET</button>
             <button class="action-btn" id="reset-btn">KALIBRERA OM SIKTE</button>
         </div>
     </div>
@@ -110,97 +101,63 @@
     <script>
         const UI = {
             crosshair: document.getElementById('crosshair'),
-            targetBox: document.getElementById('targetBox'),
-            errorLog: document.getElementById('error-log'),
+            debug: document.getElementById('debug-log'),
             status: document.getElementById('status-text'),
             startBtn: document.getElementById('start-btn'),
             resetBtn: document.getElementById('reset-btn')
         };
 
-        let mode = 'sidan';
-        let trigger = 'skarm';
-        let isRunning = false;
-        
+        let mode = 'sidan', isRunning = false;
         let startAlpha = null, startBeta = null, startGamma = null;
         let cx = 50, cy = 50;
 
-        // Canvases
         const heatCanvas = document.getElementById('heatmap-canvas');
         const heatCtx = heatCanvas.getContext('2d');
         const trailCanvas = document.getElementById('trail-canvas');
         const trailCtx = trailCanvas.getContext('2d');
         let hitData = [], trailHistory = [];
 
-        // Audio
-        let audioCtx, analyser, dataArray;
-
-        // --- Inställningar ---
-        window.setMode = (m) => {
-            mode = m;
-            document.getElementById('btn-sidan').classList.toggle('active', m === 'sidan');
-            document.getElementById('btn-ovanpa').classList.toggle('active', m === 'ovanpa');
-            startAlpha = null; // Tvinga kalibrering
-        };
-
-        window.setTrigger = (t) => {
-            trigger = t;
-            document.getElementById('btn-skarm').classList.toggle('active', t === 'skarm');
-            document.getElementById('btn-ljud').classList.toggle('active', t === 'ljud');
-        };
-
-        function logError(msg) {
-            console.error(msg);
-            UI.errorLog.innerText = msg;
+        function logDebug(msg) {
+            UI.debug.innerHTML += `> ${msg}<br>`;
+            UI.debug.scrollTop = UI.debug.scrollHeight;
+            console.log(msg);
         }
 
-        // --- Startsekvens ---
-        UI.startBtn.onclick = async () => {
-            UI.errorLog.innerText = ""; // Rensa gamla fel
+        window.setMode = (m) => {
+            mode = m; startAlpha = null;
+            document.getElementById('btn-sidan').classList.toggle('active', m === 'sidan');
+            document.getElementById('btn-ovanpa').classList.toggle('active', m === 'ovanpa');
+        };
+
+        UI.startBtn.addEventListener('click', async () => {
+            logDebug("Startar sekvens...");
             
-            // 1. Försök Helskärm (Kraschar inte om det nekas)
+            // 1. Gå i helskärm och lås till landskapsläge (Android-magi)
             try {
                 if (document.documentElement.requestFullscreen) {
                     await document.documentElement.requestFullscreen();
+                    logDebug("Helskärm aktiverad.");
                 }
-            } catch (e) { console.warn("Helskärm nekades, fortsätter ändå."); }
-
-            // Matcha canvas-storlek till DOM
-            const rect = heatCanvas.parentElement.getBoundingClientRect();
-            heatCanvas.width = rect.width; heatCanvas.height = rect.height;
-            trailCanvas.width = rect.width; trailCanvas.height = rect.height;
-
-            // 2. Begär Gyro-tillåtelse (Kritiskt för iOS)
-            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                try {
-                    const permission = await DeviceOrientationEvent.requestPermission();
-                    if (permission !== 'granted') {
-                        logError("Gyroskop nekades i webbläsaren. Ladda om sidan och tillåt.");
-                        return;
-                    }
-                } catch(e) {
-                    logError("Kunde inte begära gyro. Måste köras via HTTPS.");
-                    return;
+                if (screen.orientation && screen.orientation.lock) {
+                    await screen.orientation.lock("landscape");
+                    logDebug("Låst till liggande läge.");
                 }
+            } catch (err) {
+                logDebug("Skärmlåsning ignorerades (rotera telefonen manuellt).");
             }
 
-            // 3. Begär Mikrofon (Om valt)
-            if (trigger === 'ljud') {
-                try {
-                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    const source = audioCtx.createMediaStreamSource(stream);
-                    analyser = audioCtx.createAnalyser();
-                    source.connect(analyser);
-                    dataArray = new Uint8Array(analyser.frequencyBinCount);
-                    listenForAudio();
-                } catch(e) {
-                    logError("Mikrofon nekades. Byt till 'Peka på skärm'.");
-                    return;
-                }
-            }
+            // 2. Sätt upp canvas för spår och heatmap
+            setTimeout(() => {
+                const rect = heatCanvas.parentElement.getBoundingClientRect();
+                heatCanvas.width = rect.width; heatCanvas.height = rect.height;
+                trailCanvas.width = rect.width; trailCanvas.height = rect.height;
+                logDebug("Grafikmotor redo.");
+            }, 500); // Liten delay för att låta helskärmen expandera först
 
-            // Allt ok! Starta.
+            // 3. Starta gyro-lyssnare (Android kräver ingen requestPermission)
             window.addEventListener('deviceorientation', handleOrientation);
+            logDebug("Gyroskop anslutet.");
+            
             requestAnimationFrame(renderTrail);
             
             isRunning = true;
@@ -208,17 +165,16 @@
             UI.resetBtn.style.display = 'block';
             UI.status.innerText = "AKTIV";
             UI.status.style.color = "#00e676";
-        };
+        });
 
-        UI.resetBtn.onclick = () => { startAlpha = null; };
+        UI.resetBtn.onclick = () => { startAlpha = null; logDebug("Sikte omkalibrerat."); };
 
-        // --- Gyro-logik ---
         function handleOrientation(event) {
             if (!isRunning) return;
             
-            // Kolla om vi faktiskt får data (datorer ger null)
+            // Om Pixeln returnerar null är sensorn blockerad eller vi är i en webview
             if (event.alpha === null) {
-                logError("Får ingen data från gyroskopet. Sitter du vid en dator?");
+                if(Math.random() < 0.05) logDebug("Får ingen data. Sensorn blockerad?");
                 return;
             }
 
@@ -227,97 +183,66 @@
             }
 
             let deltaX = 0, deltaY = 0;
-
             if (mode === 'sidan') {
-                deltaX = event.alpha - startAlpha;
+                deltaX = event.alpha - startAlpha; 
                 deltaY = event.beta - startBeta;
             } else {
-                deltaX = event.gamma - startGamma;
+                deltaX = event.gamma - startGamma; 
                 deltaY = event.beta - startBeta;
             }
 
-            // Normalisera vinklar (förhindrar att siktet snurrar ett helt varv)
-            if (deltaX > 180) deltaX -= 360; 
-            if (deltaX < -180) deltaX += 360;
+            if (deltaX > 180) deltaX -= 360; if (deltaX < -180) deltaX += 360;
 
-            // Känslighet
-            cx = 50 - (deltaX * 3);
-            cy = 50 - (deltaY * 3);
+            // Känslighet (öka siffran för känsligare sikte)
+            cx = 50 - (deltaX * 3); cy = 50 - (deltaY * 3);
+            
+            // Spärra siktet så det stannar på skärmen
+            cx = Math.max(0, Math.min(100, cx)); cy = Math.max(0, Math.min(100, cy));
 
-            // Tvinga siktet att stanna innanför boxen (0% till 100%)
-            cx = Math.max(5, Math.min(95, cx));
-            cy = Math.max(5, Math.min(95, cy));
-
-            UI.crosshair.style.left = cx + "%";
-            UI.crosshair.style.top = cy + "%";
+            UI.crosshair.style.left = cx + "%"; UI.crosshair.style.top = cy + "%";
         }
 
-        // --- Skjutlogik ---
-        document.body.addEventListener('touchstart', (e) => {
-            // Skjut bara om man trycker på vänstra panelen (tavlan)
-            if (isRunning && trigger === 'skarm' && e.target.closest('#left-panel')) {
-                fireShot();
-            }
+        // Skjut genom att trycka någonstans på skärmen
+        document.body.addEventListener('pointerdown', (e) => {
+            if (isRunning && e.target.tagName !== "BUTTON") fireShot();
         });
-
-        function listenForAudio() {
-            if (!isRunning || trigger !== 'ljud') return;
-            analyser.getByteFrequencyData(dataArray);
-            if (Math.max(...dataArray) > 200) {
-                fireShot();
-                setTimeout(() => requestAnimationFrame(listenForAudio), 400); // Cooldown
-                return;
-            }
-            requestAnimationFrame(listenForAudio);
-        }
 
         let totalScore = 0, totalShots = 0, streak = 0;
 
         function fireShot() {
             if (!isRunning) return;
-
-            // Blixt
-            document.body.style.backgroundColor = "#fff";
+            
+            // Rekyl-blixt
+            document.body.style.backgroundColor = "#555";
             setTimeout(() => { document.body.style.backgroundColor = "#0d0d0d"; }, 50);
 
-            // Rita hål i DOM
+            // Skotthål
             const hole = document.createElement('div');
             hole.className = 'bullet-hole';
             hole.style.left = cx + "%"; hole.style.top = cy + "%";
             document.getElementById('target-box').appendChild(hole);
 
-            // Spara data till Heatmap & rita ut
-            hitData.push({x: cx, y: cy});
-            drawHeatmap();
-
-            // Låtsas-rekyl (förskjuter startvärdet så du måste dra tillbaka telefonen)
+            hitData.push({x: cx, y: cy}); drawHeatmap();
+            
+            // Simulerad fysisk rekyl (siktet hoppar upp)
             startBeta -= 3; 
 
-            // Poängberäkning (distans från 50,50)
             const dist = Math.sqrt(Math.pow(cx - 50, 2) + Math.pow(cy - 50, 2));
             let points = 0;
-            if (dist < 8) points = 10;
-            else if (dist < 18) points = 8;
-            else if (dist < 28) points = 6;
-            else if (dist < 38) points = 4;
-            else if (dist < 48) points = 2;
+            if (dist < 8) points = 10; else if (dist < 18) points = 8; else if (dist < 28) points = 6; else if (dist < 38) points = 4; else if (dist < 48) points = 2;
 
-            if (points > 0) {
-                streak++; UI.status.innerText = `TRÄFF! (${points}p)`; UI.status.style.color = "#00e676";
-            } else {
-                streak = 0; UI.status.innerText = "BOM!"; UI.status.style.color = "#ff1744";
-            }
+            if (points > 0) { streak++; UI.status.innerText = `TRÄFF! (${points}p)`; UI.status.style.color = "#00e676"; } 
+            else { streak = 0; UI.status.innerText = "BOM!"; UI.status.style.color = "#ff1744"; }
 
             totalShots++; totalScore += points;
             document.getElementById('streak').innerText = streak;
             document.getElementById('snitt').innerText = (totalScore / totalShots).toFixed(1);
         }
 
-        // --- RITA SPÅR & HEATMAP ---
         function renderTrail() {
             if (!isRunning) return;
             trailHistory.push({ x: cx, y: cy });
-            if (trailHistory.length > 20) trailHistory.shift();
+            if (trailHistory.length > 25) trailHistory.shift();
 
             trailCtx.clearRect(0, 0, trailCanvas.width, trailCanvas.height);
             if (trailHistory.length > 1) {
@@ -326,11 +251,8 @@
                     trailCtx.beginPath();
                     trailCtx.moveTo((trailHistory[i].x / 100) * w, (trailHistory[i].y / 100) * h);
                     trailCtx.lineTo((trailHistory[i+1].x / 100) * w, (trailHistory[i+1].y / 100) * h);
-                    
-                    const opacity = (i / trailHistory.length);
-                    trailCtx.strokeStyle = `rgba(0, 255, 255, ${opacity})`;
-                    trailCtx.lineWidth = 2;
-                    trailCtx.stroke();
+                    trailCtx.strokeStyle = `rgba(0, 255, 255, ${(i / trailHistory.length) * 0.8})`;
+                    trailCtx.lineWidth = 3; trailCtx.stroke();
                 }
             }
             requestAnimationFrame(renderTrail);
@@ -338,18 +260,12 @@
 
         function drawHeatmap() {
             heatCtx.clearRect(0, 0, heatCanvas.width, heatCanvas.height);
-            const w = heatCanvas.width, h = heatCanvas.height;
-            const radius = w * 0.15;
-
+            const w = heatCanvas.width, h = heatCanvas.height, radius = w * 0.12;
             hitData.forEach(hit => {
-                const x = (hit.x / 100) * w;
-                const y = (hit.y / 100) * h;
+                const x = (hit.x / 100) * w, y = (hit.y / 100) * h;
                 const gradient = heatCtx.createRadialGradient(x, y, 0, x, y, radius);
-                gradient.addColorStop(0, 'rgba(255, 255, 0, 0.6)');
-                gradient.addColorStop(0.4, 'rgba(255, 0, 0, 0.3)');
-                gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
-                heatCtx.fillStyle = gradient;
-                heatCtx.beginPath(); heatCtx.arc(x, y, radius, 0, Math.PI * 2); heatCtx.fill();
+                gradient.addColorStop(0, 'rgba(255, 255, 0, 0.8)'); gradient.addColorStop(0.4, 'rgba(255, 0, 0, 0.4)'); gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+                heatCtx.fillStyle = gradient; heatCtx.beginPath(); heatCtx.arc(x, y, radius, 0, Math.PI * 2); heatCtx.fill();
             });
         }
     </script>
