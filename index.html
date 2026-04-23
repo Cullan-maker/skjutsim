@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=landscape">
-    <title>2D Analysator - MantisX Klon</title>
+    <title>2D Analysator - Struket Korn</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap');
         * { box-sizing: border-box; user-select: none; font-family: 'Roboto', sans-serif; }
@@ -16,7 +16,7 @@
         #discreet-feedback { position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%); font-size: 32px; font-weight: 900; opacity: 0; transition: opacity 0.2s ease-out; z-index: 1000; text-shadow: 0 2px 5px rgba(0,0,0,0.8); letter-spacing: 2px;}
         
         .grid-layout { display: grid; grid-template-columns: 300px 1fr 1fr; grid-template-rows: 60% 40%; gap: 10px; width: 100%; height: 100%; display: none;}
-        .panel { background: #1e1e1e; padding: 10px; border-radius: 8px; border: 1px solid #333; display: flex; flex-direction: column; overflow: hidden; }
+        .panel { background: #1e1e1e; padding: 10px; border-radius: 8px; border: 1px solid #333; display: flex; flex-direction: column; overflow: hidden; position: relative;}
         
         .controls-col { grid-column: 1; grid-row: 1 / span 2; justify-content: space-between;}
         .controls-col h2 { font-size: 16px; color: #00ffff; margin: 0 0 10px 0; display: flex; justify-content: space-between; align-items: center;}
@@ -43,14 +43,20 @@
         #feedback-title { font-weight: 900; color: #00ffff; font-size: 12px; margin-bottom: 5px;}
         #feedback-text { font-size: 11px; line-height: 1.4; color: #ccc; }
 
-        .canvas-title { font-size: 10px; color: #888; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; text-align: center; }
-        .target-col { grid-column: 2; grid-row: 1; align-items: center;}
+        .canvas-title { font-size: 10px; color: #888; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; text-align: center; z-index: 10;}
+        .target-col { grid-column: 2; grid-row: 1; align-items: center; position: relative;}
         .heatmap-col { grid-column: 3; grid-row: 1; align-items: center;}
         .ekg-col { grid-column: 2 / span 2; grid-row: 2; }
         
         canvas { background: #000; border-radius: 4px; border: 1px solid #444; object-fit: contain; }
         .square-canvas { width: 100%; height: calc(100% - 20px); max-height: 100%; aspect-ratio: 1/1; }
         .wide-canvas { width: 100%; height: calc(100% - 20px); }
+
+        /* NYTT: Siktet i 2D-vyn */
+        #glock-sight-2d { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); width: 180px; height: 100px; pointer-events: none; display: flex; justify-content: center; align-items: flex-end; z-index: 5;}
+        .rear-sight-2d { width: 120px; height: 45px; border: 25px solid #1a1a1a; border-top: none; position: absolute; bottom: 0; border-radius: 4px; box-shadow: inset 0 5px 15px rgba(0,0,0,0.8); }
+        .front-sight-2d { width: 22px; height: 55px; background: #222; position: absolute; bottom: 12px; display: flex; justify-content: center; padding-top: 5px; border-radius: 3px 3px 0 0; box-shadow: 0 -2px 5px rgba(0,0,0,0.5); z-index: 1; transition: transform 0.03s ease-out; }
+        .white-dot-2d { width: 12px; height: 12px; background: #fff; border-radius: 50%; box-shadow: 0 0 5px rgba(255,255,255,0.8); }
     </style>
 </head>
 <body>
@@ -84,7 +90,7 @@
 
             <div class="input-group">
                 <label><span>Vapnets Tröghet (Vikt)</span></label>
-                <input type="range" id="inertia-slider" min="0.02" max="0.30" step="0.02" value="0.08">
+                <input type="range" id="inertia-slider" min="0.02" max="0.30" step="0.02" value="0.10">
                 <div style="display:flex; justify-content:space-between; font-size: 9px; color: #888;">
                     <span>Tung (Glock 45)</span><span>Lätt (Attrapp)</span>
                 </div>
@@ -97,13 +103,18 @@
 
             <div id="feedback-box">
                 <div id="feedback-title">DIAGNOSTIK</div>
-                <div id="feedback-text">Justera vikten/trögheten för att matcha din Glock 45.<br><br>Testa att rikta vapnet upp/ner. Om siktet rör sig åt fel håll, klicka ur "Invert Y".<br><br>Cooldown: 2,5s.</div>
+                <div id="feedback-text"><b>STRUKET KORN AKTIVERAT!</b><br>Träffen beräknas nu både på var du siktar (cyan prick) OCH hur väl linjerat ditt korn är i skåran vid avfyrning. Håll handleden stilla!</div>
             </div>
         </div>
 
         <div class="panel target-col">
             <div class="canvas-title">Live Sikte (Gyro)</div>
             <canvas id="target-canvas" class="square-canvas"></canvas>
+            
+            <div id="glock-sight-2d">
+                <div class="rear-sight-2d"></div>
+                <div class="front-sight-2d" id="front-sight-2d"><div class="white-dot-2d"></div></div>
+            </div>
         </div>
 
         <div class="panel heatmap-col">
@@ -118,21 +129,23 @@
     </div>
 
     <script>
-        // --- SETUP ---
         const tCan = document.getElementById('target-canvas'); const tCtx = tCan.getContext('2d');
         const eCan = document.getElementById('ekg-canvas'); const eCtx = eCan.getContext('2d');
         const hCan = document.getElementById('heatmap-canvas'); const hCtx = hCan.getContext('2d');
         
         tCan.width = 400; tCan.height = 400; hCan.width = 400; hCan.height = 400; eCan.width = 800; eCan.height = 200;
 
+        // Vapnets riktning (Den blåa ormen)
         let rawAimX = 50, rawAimY = 50, aimX = 50, aimY = 50;
-        let trace = [], ekg = new Array(200).fill(50), shots = [];
         
+        // Järnsiktets rörelse (Korn och Skåra)
+        let sightOffsetX = 0, sightOffsetY = 0, sightVelX = 0, sightVelY = 0;
+
+        let trace = [], ekg = new Array(200).fill(50), shots = [];
         let prevAlpha = null, prevBeta = null, prevGamma = null;
         let lastTriggerTime = 0, lastShotRecord = 0;
         const cooldownTime = 2500; 
 
-        // --- START ---
         document.getElementById('btn-start').addEventListener('click', async () => {
             try {
                 if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
@@ -172,7 +185,7 @@
             loop2D();
         });
 
-        // --- GIMBAL SANITIZER GYRO ---
+        // --- GYROMATEMATIK ---
         window.addEventListener('deviceorientation', (e) => {
             if (e.alpha === null) return;
             if (prevAlpha === null) { prevAlpha = e.alpha; prevBeta = e.beta; prevGamma = e.gamma; return; }
@@ -199,16 +212,19 @@
             if (mount === 'top') { moveX = dAlpha; moveY = dGamma; } 
             else { moveX = dGamma; moveY = dAlpha; }
 
+            // 1. Uppdatera Vapnets Riktning (Tavlan)
             rawAimX += (moveX * sensitivity * invX);
             rawAimY += (moveY * sensitivity * invY);
-
             rawAimX = Math.max(-50, Math.min(150, rawAimX));
             rawAimY = Math.max(-50, Math.min(150, rawAimY));
+
+            // 2. Uppdatera Järnsiktets rörelse (Korn och Skåra - blixtsnabb reaktion)
+            sightVelX -= moveX * 3.5 * invX;
+            sightVelY -= moveY * 3.5 * invY;
 
             prevAlpha = e.alpha; prevBeta = e.beta; prevGamma = e.gamma;
         });
 
-        // --- UI & LOGIK ---
         document.getElementById('cal-btn-2d').onclick = () => { rawAimX = 50; rawAimY = 50; aimX = 50; aimY = 50; };
         
         document.getElementById('reset-btn-2d').onclick = () => {
@@ -244,26 +260,45 @@
         }
 
         function registerShot() {
+            // Rekyl-effekt i siktet
+            const frontSightEl = document.getElementById('front-sight-2d');
+            frontSightEl.querySelector('.white-dot-2d').style.background = "red";
+            sightVelY -= 20; 
+            setTimeout(() => frontSightEl.querySelector('.white-dot-2d').style.background = "#fff", 100);
+
             let now = Date.now();
             let split = lastShotRecord === 0 ? 0 : (now - lastShotRecord) / 1000;
             lastShotRecord = now;
 
-            let pts = 10 - Math.floor(Math.sqrt(Math.pow(aimX-50,2) + Math.pow(aimY-50,2))/4.5);
-            if(pts<0) pts=0; shots.push({x:aimX, y:aimY, pts});
+            // --- NY TRÄFFBERÄKNING (Kombinerar riktning + siktesfel) ---
+            // Om kornet ligger ur skåran, flyttas träffen dramatiskt.
+            let hitX = aimX + (sightOffsetX * 0.15);
+            let hitY = aimY + (sightOffsetY * 0.15);
+
+            let pts = 10 - Math.floor(Math.sqrt(Math.pow(hitX-50,2) + Math.pow(hitY-50,2))/4.5);
+            if(pts<0) pts=0; 
+            
+            shots.push({x:hitX, y:hitY, pts});
             
             document.getElementById('analys-hits').innerText = shots.length;
             document.getElementById('analys-avg').innerText = (shots.reduce((a,b)=>a+b.pts,0)/shots.length).toFixed(1);
             document.getElementById('analys-split').innerText = split > 0 ? split.toFixed(2) + "s" : "--";
             
-            let dx = aimX - 50; let dy = aimY - 50;
-            let fC = "#00ff00", fT = "PERFEKT!", fTxt = "Siktet låg stilla i mitten.";
+            let fC = "#00ff00", fT = "PERFEKT!", fTxt = "Siktet var linjerat och låg stilla.";
             
-            if (dy > 4 && Math.abs(dx) < 5) { fC="#ff1744"; fT="DIPPAR"; fTxt="Träffen är låg. Du anticiperar rekylen och trycker ner pipan."; } 
-            else if (dx < -4 && dy > 2) { fC="#ff9800"; fT="LÅGT VÄNSTER"; fTxt="Pushat skott. Krama med mer avtryckarfinger."; } 
-            else if (dx < -5) { fC="#ff9800"; fT="DRAG VÄNSTER"; fTxt="Kontrollera fingrets placering på avtryckaren."; } 
-            else if (dx > 5) { fC="#ff9800"; fT="DRAG HÖGER"; fTxt="Du har sannolikt för mycket finger inne i varbygeln."; } 
-            else if (dy < -5) { fC="#ff9800"; fT="HÖGT"; fTxt="Du bryter upp handleden (heeling) under avfyrningen."; } 
-            else if (pts > 0 && pts < 8) { fC="#ffeb3b"; fT="OKAY"; fTxt="Generellt svaj. Försök stabilisera ditt stöd."; }
+            // Kolla först om de missade pga struket korn
+            if (Math.abs(sightOffsetX) > 20 || Math.abs(sightOffsetY) > 20) {
+                fC="#ff1744"; fT="SIKTESFEL"; 
+                fTxt="Du höll inte struket korn! Kornet måste ligga i skåran (den vita pricken centrerad) annars går skottet snett oavsett var du siktar på tavlan.";
+            } else {
+                let dx = aimX - 50; let dy = aimY - 50;
+                if (dy > 4 && Math.abs(dx) < 5) { fC="#ff9800"; fT="DIPPAR"; fTxt="Träffen är låg. Du anticiperar rekylen."; } 
+                else if (dx < -4 && dy > 2) { fC="#ff9800"; fT="LÅGT VÄNSTER"; fTxt="Pushat skott. Krama rakt bakåt."; } 
+                else if (dx < -5) { fC="#ff9800"; fT="DRAG VÄNSTER"; fTxt="Kontrollera avtryckarfingret."; } 
+                else if (dx > 5) { fC="#ff9800"; fT="DRAG HÖGER"; fTxt="För mycket finger i varbygeln."; } 
+                else if (dy < -5) { fC="#ff9800"; fT="HÖGT"; fTxt="Bryter upp handleden under avfyrningen."; } 
+                else if (pts > 0 && pts < 8) { fC="#ffeb3b"; fT="OKAY"; fTxt="Generellt svaj. Försök stabilisera ditt stöd."; }
+            }
             
             document.getElementById('feedback-box').style.borderColor = fC;
             document.getElementById('feedback-title').innerText = fT; document.getElementById('feedback-title').style.color = fC;
@@ -273,15 +308,25 @@
         }
 
         function loop2D() {
-            // Läs in Vapnets Tröghet (Tungt vapen = lågt värde, lätt vapen = högt värde)
+            // 1. Uppdatera Tavla (Tröghet/Vikt)
             const inertia = parseFloat(document.getElementById('inertia-slider').value);
-            
             aimX += (rawAimX - aimX) * inertia; 
             aimY += (rawAimY - aimY) * inertia;
             
             trace.push({x:aimX, y:aimY}); if(trace.length>30) trace.shift();
             ekg.push(aimY); if(ekg.length>200) ekg.shift();
 
+            // 2. Uppdatera Järnsiktet (Fjäderfysik för Korn & Skåra)
+            sightVelX *= 0.8; sightVelY *= 0.8; 
+            sightOffsetX += sightVelX; sightOffsetY += sightVelY;
+            sightOffsetX += (0 - sightOffsetX) * 0.15; // Dra tillbaka till mitten
+            sightOffsetY += (0 - sightOffsetY) * 0.15;
+            
+            sightOffsetX = Math.max(-60, Math.min(60, sightOffsetX)); 
+            sightOffsetY = Math.max(-40, Math.min(40, sightOffsetY));
+            document.getElementById('front-sight-2d').style.transform = `translate(${sightOffsetX}px, ${sightOffsetY}px)`;
+
+            // 3. Rita grafik
             const tw = tCan.width; drawBg(tCtx, tw, tw);
             shots.forEach(s => { tCtx.fillStyle='#fff'; tCtx.beginPath(); tCtx.arc((s.x/100)*tw, (s.y/100)*tw, 6, 0, Math.PI*2); tCtx.fill(); });
             
