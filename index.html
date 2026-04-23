@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=landscape">
-    <title>2D Skytteteknik Analys Pro</title>
+    <title>2D Skytteteknik Analys Pro (Raw Gyro)</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap');
         * { box-sizing: border-box; user-select: none; font-family: 'Roboto', sans-serif; }
@@ -78,13 +78,13 @@
                 </select>
                 <div class="checkbox-row">
                     <label><input type="checkbox" id="inv-x"> Invert X</label>
-                    <label><input type="checkbox" id="inv-y"> Invert Y</label>
+                    <label><input type="checkbox" id="inv-y" checked> Invert Y</label>
                 </div>
             </div>
 
             <div class="input-group">
                 <label><span>Vapnets Tröghet (Vikt)</span></label>
-                <input type="range" id="inertia-slider" min="0.01" max="0.3" step="0.01" value="0.06">
+                <input type="range" id="inertia-slider" min="0.01" max="0.3" step="0.01" value="0.08">
             </div>
 
             <div class="btn-row">
@@ -94,7 +94,7 @@
 
             <div id="feedback-box">
                 <div id="feedback-title">DIAGNOSTIK</div>
-                <div id="feedback-text">Kalibrera siktet.<br><br>Justera <b>Vapnets Tröghet</b>. Lågt värde = tungt och extremt stabilt vapen. Högt värde = snabbt och skakigt.<br><br>Cooldown: 2,5s.</div>
+                <div id="feedback-text">Kalibrera siktet.<br><br>Testa att rikta vapnet upp/ner. Om siktet rör sig åt fel håll, klicka ur "Invert Y".<br><br>Cooldown för avtryckare: 2,5s.</div>
             </div>
         </div>
 
@@ -124,9 +124,8 @@
         let rawAimX = 50, rawAimY = 50, aimX = 50, aimY = 50;
         let trace = [], ekg = new Array(200).fill(50), shots = [];
         
-        let calAlpha = null, calBeta = null, calGamma = null;
         let lastTriggerTime = 0, lastShotRecord = 0;
-        const cooldownTime = 2500; // 2.5 sekunder!
+        const cooldownTime = 2500; 
 
         document.getElementById('btn-start').addEventListener('click', async () => {
             try {
@@ -149,9 +148,9 @@
                     let now = Date.now();
                     
                     if (now - lastTriggerTime < cooldownTime) {
-                        micDot.className = 'mic-dot cooldown'; // Orange under omladdning
+                        micDot.className = 'mic-dot cooldown'; 
                     } else {
-                        micDot.className = 'mic-dot active'; // Grön och redo
+                        micDot.className = 'mic-dot active'; 
                         if (Math.max(...dataArray) > 170) {
                             lastTriggerTime = now; 
                             registerShot();
@@ -165,46 +164,48 @@
             loop2D();
         });
 
-        // --- STABILT GYRO (Absolut position istället för drift) ---
-        window.addEventListener('deviceorientation', (e) => {
-            if(!e.alpha) return;
-            
-            // Sätt kalibreringspunkt
-            if(calAlpha === null) { 
-                calAlpha = e.alpha; calBeta = e.beta; calGamma = e.gamma; 
-                return; 
-            }
-            
-            // Räkna ut kortaste vinkeln till vår nollpunkt för att undvika 360-wraps (Gimbal lock)
-            let dx = e.alpha - calAlpha;
-            let dy = e.gamma - calGamma;
-            let dz = e.beta - calBeta;
-            
-            if (dx > 180) dx -= 360; else if (dx < -180) dx += 360;
-            if (dy > 180) dy -= 360; else if (dy < -180) dy += 360;
-            if (dz > 180) dz -= 360; else if (dz < -180) dz += 360;
+        // --- STABILT GYRO (RÅ ROTATIONSHASTIGHET - INGA HOPP) ---
+        window.addEventListener('devicemotion', (e) => {
+            let rr = e.rotationRate;
+            if(!rr || rr.beta === null) return;
+
+            // Fångar rotationshastighet (grader per sekund)
+            let rotX = rr.beta || 0;  // Tilt fram/bak
+            let rotY = rr.gamma || 0; // Tilt vänster/höger
+            let rotZ = rr.alpha || 0; // Snurr
+
+            // Ignorera mikroskakningar för att undvika "drift"
+            if(Math.abs(rotX) < 0.05) rotX = 0;
+            if(Math.abs(rotY) < 0.05) rotY = 0;
+            if(Math.abs(rotZ) < 0.05) rotZ = 0;
 
             const mount = document.getElementById('mount-select').value;
             const invX = document.getElementById('inv-x').checked ? -1 : 1;
             const invY = document.getElementById('inv-y').checked ? -1 : 1;
             
-            let targetX = 50, targetY = 50;
-            const sensitivity = 2.0; // Sänkt känslighet för mer stabil grund
+            let moveX = 0, moveY = 0;
 
-            // Räkna ut målkoordinaten
+            // Olika axlar agerar olika baserat på hur telefonen är monterad
             if (mount === 'top') {
-                targetX = 50 - (dx * sensitivity * invX);
-                targetY = 50 - (dy * sensitivity * invY);
+                moveY = rotX; 
+                moveX = rotY; 
             } else {
-                targetX = 50 - (dz * sensitivity * invX);
-                targetY = 50 - (dx * sensitivity * invY);
+                moveY = rotY; 
+                moveX = rotZ; 
             }
 
-            rawAimX = targetX;
-            rawAimY = targetY;
+            // Känslighet (Multiplier per frame)
+            const sens = 0.15; 
+
+            rawAimX += (moveX * sens * invX);
+            rawAimY += (moveY * sens * invY);
+
+            // Spärra siktet från att åka oändligt långt bort
+            rawAimX = Math.max(-50, Math.min(150, rawAimX));
+            rawAimY = Math.max(-50, Math.min(150, rawAimY));
         });
 
-        document.getElementById('cal-btn-2d').onclick = () => { calAlpha = null; rawAimX = 50; rawAimY = 50; aimX = 50; aimY = 50; };
+        document.getElementById('cal-btn-2d').onclick = () => { rawAimX = 50; rawAimY = 50; aimX = 50; aimY = 50; };
         
         document.getElementById('reset-btn-2d').onclick = () => {
             shots=[]; lastShotRecord = 0;
@@ -269,7 +270,7 @@
         }
 
         function loop2D() {
-            // Hämta trögheten från slidern! Lågt värde (0.01) = jättetrög, Högt (0.3) = skakig
+            // Hämta trögheten från slidern! Lågt värde = jättetrög, Högt = skakig
             const inertia = parseFloat(document.getElementById('inertia-slider').value);
             
             // Fysisk interpolation (Mjukar upp sensorbruset markant)
