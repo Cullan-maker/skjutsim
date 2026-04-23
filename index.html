@@ -2,8 +2,8 @@
 <html lang="sv">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=landscape">
-    <title>Handhållen Simulator (Standalone)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Siktsimulator - Stabil Version</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap');
 
@@ -11,378 +11,346 @@
         body { 
             margin: 0; padding: 0; background-color: #0d0d0d; color: #fff; 
             font-family: 'Roboto', sans-serif; display: flex; height: 100vh; width: 100vw; overflow: hidden;
-            transition: background-color 0.05s;
         }
 
-        /* --- VÄNSTER PANEL (Tavla & Sikte) --- */
         #left-panel {
             flex: 1; height: 100%; display: flex; flex-direction: column; 
-            align-items: center; justify-content: center; gap: 4vh; padding: 10px;
-            border-right: 1px solid #333;
+            align-items: center; justify-content: center; padding: 10px;
+            border-right: 1px solid #333; position: relative;
         }
 
-        /* Anpassar sig nu efter skärmens minsta dimension (vmin) */
         #target-box {
-            width: 60vmin; height: 60vmin; max-width: 300px; max-height: 300px;
-            background: #1a1a1a; border-radius: 10px; 
+            width: 60vmin; height: 60vmin; max-width: 350px; max-height: 350px;
+            background: #1a1a1a; border-radius: 50%; /* Rund box för snyggare gräns */
             display: flex; align-items: center; justify-content: center; position: relative;
-            overflow: hidden; border: 2px solid #222;
+            overflow: hidden; border: 2px solid #333;
         }
 
         #target {
             width: 90%; height: 90%; border-radius: 50%;
-            background: repeating-radial-gradient(
-                circle,
-                #aa0000 0%, #aa0000 10%, #111 10%, #111 20%, #aa0000 20%, #aa0000 30%,
-                #111 30%, #111 40%, #aa0000 40%, #aa0000 50%
-            );
-            position: relative; box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+            background: repeating-radial-gradient( circle, #aa0000 0%, #aa0000 10%, #111 10%, #111 20%, #aa0000 20%, #aa0000 30%, #111 30%, #111 40%, #aa0000 40%, #aa0000 50% );
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
         }
 
-        /* Canvas-lager för Heatmap och Spår */
-        canvas {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; /* Klick går rakt igenom */
-            border-radius: 50%; /* Följer måltavlans form */
-        }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
 
         #crosshair {
-            position: absolute; width: 12px; height: 12px; background: cyan; 
+            position: absolute; width: 14px; height: 14px; background: cyan; 
             border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            box-shadow: 0 0 10px cyan, 0 0 20px cyan; z-index: 10;
+            box-shadow: 0 0 10px cyan; z-index: 10;
         }
         
         .bullet-hole {
             position: absolute; width: 8px; height: 8px; background: #fff; border-radius: 50%;
-            transform: translate(-50%, -50%); box-shadow: 0 0 3px rgba(255,255,255,0.8); z-index: 5;
+            transform: translate(-50%, -50%); box-shadow: 0 0 5px rgba(255,255,255,0.8); z-index: 5;
         }
 
-        #sight-box {
-            width: 60vmin; max-width: 300px; height: 12vmin; max-height: 60px;
-            background: #1a1a1a; border-radius: 10px; border: 1px solid #333;
-            position: relative; display: flex; flex-direction: column; justify-content: space-evenly;
-        }
-        .sight-line { width: 100%; height: 2px; background: #333; }
-        .sight-line.center { background: #aa0000; height: 3px; }
-        #pitch-indicator {
-            position: absolute; width: 100%; height: 4px; background: cyan; top: 50%;
-            transform: translateY(-50%); opacity: 0.8; box-shadow: 0 0 5px cyan;
-        }
-
-        /* --- HÖGER PANEL (Kontroller) --- */
         #right-panel {
-            flex: 1.2; height: 100%; display: flex; flex-direction: column; padding: 15px;
-            overflow-y: auto; justify-content: space-between;
+            flex: 1; height: 100%; display: flex; flex-direction: column; padding: 15px; justify-content: space-between; overflow-y: auto;
         }
 
-        #status-header { text-align: center; }
-        #main-status { color: #00ffff; font-size: 5vmin; font-weight: 900; margin: 0; letter-spacing: 1px; }
-        #sub-status { color: #aaa; font-size: 2.5vmin; margin: 2px 0; }
-        #stats { color: #fff; font-size: 3vmin; margin-top: 5px; font-weight: bold; background: #222; padding: 8px; border-radius: 5px;}
+        h1 { font-size: 4vmin; margin: 0; color: #00ffff; }
+        .debug-log { font-size: 1.5vmin; color: #ff5252; margin-bottom: 10px; word-wrap: break-word;}
+        .stats { background: #222; padding: 10px; border-radius: 5px; font-size: 2.5vmin; font-weight: bold; margin-bottom: 10px;}
 
-        .control-group { margin-bottom: 5px; }
-        .control-label { font-size: 10px; color: #888; text-transform: uppercase; margin-bottom: 3px; }
-        .button-row { display: flex; gap: 5px; width: 100%; }
-        
+        .btn-group { display: flex; gap: 5px; margin-bottom: 15px; }
         .toggle-btn {
             flex: 1; background: #222; color: #aaa; border: 2px solid #444; 
-            padding: 1.5vh 0; font-size: 2.5vmin; font-weight: 700; border-radius: 6px;
-            text-transform: uppercase; cursor: pointer; transition: 0.2s;
+            padding: 15px 0; font-size: 2.5vmin; font-weight: bold; border-radius: 6px; cursor: pointer;
         }
-        
-        .toggle-btn.active-blue { background: #007bff; color: #fff; border-color: #0056b3; }
-        .toggle-btn.active-orange { background: #ff9800; color: #fff; border-color: #e65100; }
+        .toggle-btn.active { background: #007bff; color: #fff; border-color: #0056b3; }
 
-        .action-row { display: flex; gap: 10px; margin-top: 10px; }
-        
-        #start-btn, #reset-btn {
-            flex: 1; color: #fff; padding: 2vh; font-size: 3vmin; font-weight: 900; 
-            border-radius: 6px; cursor: pointer; border: none;
+        .action-btn {
+            width: 100%; padding: 20px; font-size: 3vmin; font-weight: bold; color: white;
+            border: none; border-radius: 6px; cursor: pointer; margin-top: 5px;
         }
-        
-        #start-btn { background: #2e7d32; box-shadow: 0 4px 0 #1b5e20; }
-        #start-btn:active { transform: translateY(4px); box-shadow: 0 0 0 #1b5e20; }
-        
-        #reset-btn { background: #d32f2f; box-shadow: 0 4px 0 #b71c1c; display: none; }
-        #reset-btn:active { transform: translateY(4px); box-shadow: 0 0 0 #b71c1c; }
-
+        #start-btn { background: #2e7d32; }
+        #reset-btn { background: #d32f2f; display: none; }
     </style>
 </head>
 <body>
 
     <div id="left-panel">
         <div id="target-box">
-            <div id="target">
-                <canvas id="heatmap-canvas"></canvas>
-                <canvas id="trail-canvas"></canvas>
-                <div id="crosshair"></div>
-            </div>
-        </div>
-        
-        <div id="sight-box">
-            <div class="sight-line"></div>
-            <div class="sight-line center"></div>
-            <div class="sight-line"></div>
-            <div id="pitch-indicator"></div>
+            <div id="target"></div>
+            <canvas id="heatmap-canvas"></canvas>
+            <canvas id="trail-canvas"></canvas>
+            <div id="crosshair"></div>
         </div>
     </div>
 
     <div id="right-panel">
-        <div id="status-header">
-            <h1 id="main-status">VÄNTAR...</h1>
-            <p id="sub-status">Klicka start för helskärm & kalibrering.</p>
-            <div id="stats">Streak: <span id="streak" style="color:#ff9800">0</span> | Snitt: <span id="snitt" style="color:#00ffff">0.0</span></div>
-        </div>
+        <div>
+            <h1 id="status-text">REDO</h1>
+            <div id="error-log" class="debug-log"></div>
+            <div class="stats">
+                Streak: <span id="streak" style="color:#ff9800">0</span> | 
+                Snitt: <span id="snitt" style="color:#00ffff">0.0</span>
+            </div>
 
-        <div class="control-group">
-            <div class="control-label">Montering</div>
-            <div class="button-row">
-                <button class="toggle-btn active-blue" id="btn-montering-sidan">På Sidan</button>
-                <button class="toggle-btn" id="btn-montering-ovanpa">Ovanpå</button>
+            <p style="font-size: 2vmin; color:#888; margin-bottom:5px;">Riktning (Håll mobilen framför dig):</p>
+            <div class="btn-group">
+                <button class="toggle-btn active" id="btn-sidan" onclick="setMode('sidan')">Skärm mot dig</button>
+                <button class="toggle-btn" id="btn-ovanpa" onclick="setMode('ovanpa')">Skärm uppåt</button>
+            </div>
+
+            <p style="font-size: 2vmin; color:#888; margin-bottom:5px;">Skjut med:</p>
+            <div class="btn-group">
+                <button class="toggle-btn active" id="btn-skarm" onclick="setTrigger('skarm')">Peka på skärm</button>
+                <button class="toggle-btn" id="btn-ljud" onclick="setTrigger('ljud')">Ljud (Klick)</button>
             </div>
         </div>
 
-        <div class="control-group">
-            <div class="control-label">Avtryckare</div>
-            <div class="button-row">
-                <button class="toggle-btn active-orange" id="btn-avfyrning-skarm">Skärm</button>
-                <button class="toggle-btn" id="btn-avfyrning-ljud">Ljud</button>
-            </div>
-        </div>
-
-        <div class="action-row">
-            <button id="start-btn">STARTA</button>
-            <button id="reset-btn">RENSA</button>
+        <div>
+            <button class="action-btn" id="start-btn">GE TILLÅTELSER & STARTA</button>
+            <button class="action-btn" id="reset-btn">KALIBRERA OM SIKTE</button>
         </div>
     </div>
 
     <script>
-        // --- Fullskärm & Responsivitet ---
-        async function requestFullscreenAndLock() {
-            try {
-                if (document.documentElement.requestFullscreen) {
-                    await document.documentElement.requestFullscreen();
-                }
-                // Försök låsa till landskapsläge (Stöds främst på Android)
-                if (screen.orientation && screen.orientation.lock) {
-                    await screen.orientation.lock("landscape");
-                }
-            } catch (err) {
-                console.warn("Kunde inte starta helskärm/låsa rotation automatiskt.", err);
-            }
-        }
+        const UI = {
+            crosshair: document.getElementById('crosshair'),
+            targetBox: document.getElementById('targetBox'),
+            errorLog: document.getElementById('error-log'),
+            status: document.getElementById('status-text'),
+            startBtn: document.getElementById('start-btn'),
+            resetBtn: document.getElementById('reset-btn')
+        };
 
-        // --- Canvas Setup (Heatmap & Trail) ---
+        let mode = 'sidan';
+        let trigger = 'skarm';
+        let isRunning = false;
+        
+        let startAlpha = null, startBeta = null, startGamma = null;
+        let cx = 50, cy = 50;
+
+        // Canvases
         const heatCanvas = document.getElementById('heatmap-canvas');
         const heatCtx = heatCanvas.getContext('2d');
         const trailCanvas = document.getElementById('trail-canvas');
         const trailCtx = trailCanvas.getContext('2d');
-        let hitData = []; // Sparar {x, y} i procent för att kunna rita om ifall skärmen roteras
-        let trailHistory = []; // Sparar rörelsehistorik
-        
-        function resizeCanvases() {
-            // Sätt canvas interna upplösning till samma som DOM-elementet
+        let hitData = [], trailHistory = [];
+
+        // Audio
+        let audioCtx, analyser, dataArray;
+
+        // --- Inställningar ---
+        window.setMode = (m) => {
+            mode = m;
+            document.getElementById('btn-sidan').classList.toggle('active', m === 'sidan');
+            document.getElementById('btn-ovanpa').classList.toggle('active', m === 'ovanpa');
+            startAlpha = null; // Tvinga kalibrering
+        };
+
+        window.setTrigger = (t) => {
+            trigger = t;
+            document.getElementById('btn-skarm').classList.toggle('active', t === 'skarm');
+            document.getElementById('btn-ljud').classList.toggle('active', t === 'ljud');
+        };
+
+        function logError(msg) {
+            console.error(msg);
+            UI.errorLog.innerText = msg;
+        }
+
+        // --- Startsekvens ---
+        UI.startBtn.onclick = async () => {
+            UI.errorLog.innerText = ""; // Rensa gamla fel
+            
+            // 1. Försök Helskärm (Kraschar inte om det nekas)
+            try {
+                if (document.documentElement.requestFullscreen) {
+                    await document.documentElement.requestFullscreen();
+                }
+            } catch (e) { console.warn("Helskärm nekades, fortsätter ändå."); }
+
+            // Matcha canvas-storlek till DOM
             const rect = heatCanvas.parentElement.getBoundingClientRect();
             heatCanvas.width = rect.width; heatCanvas.height = rect.height;
             trailCanvas.width = rect.width; trailCanvas.height = rect.height;
-            drawHeatmap(); // Rita om tidigare träffar med nya upplösningen
-        }
-        window.addEventListener('resize', resizeCanvases);
 
-        // --- UI & Toggles ---
-        let montering = "sidan";
-        let avfyrning = "skarm";
-
-        document.getElementById('btn-montering-sidan').onclick = function() {
-            this.classList.add('active-blue'); document.getElementById('btn-montering-ovanpa').classList.remove('active-blue');
-            montering = "sidan"; calibrate();
-        };
-        document.getElementById('btn-montering-ovanpa').onclick = function() {
-            this.classList.add('active-blue'); document.getElementById('btn-montering-sidan').classList.remove('active-blue');
-            montering = "ovanpa"; calibrate();
-        };
-
-        const setAvfyrning = (mode, btn) => {
-            ['skarm', 'ljud'].forEach(m => document.getElementById(`btn-avfyrning-${m}`).classList.remove('active-orange'));
-            document.getElementById(btn).classList.add('active-orange');
-            avfyrning = mode;
-        };
-        document.getElementById('btn-avfyrning-skarm').onclick = () => setAvfyrning('skarm', 'btn-avfyrning-skarm');
-        document.getElementById('btn-avfyrning-ljud').onclick = () => setAvfyrning('ljud', 'btn-avfyrning-ljud');
-
-        // --- Core Logic ---
-        let isRunning = false;
-        let startAlpha = null, startBeta = null, startGamma = null;
-        let cx = 50, cy = 50; 
-        let streak = 0; let totalScore = 0; let totalShots = 0;
-
-        const mainStatus = document.getElementById('main-status');
-        const crosshair = document.getElementById('crosshair');
-        const pitchIndicator = document.getElementById('pitch-indicator');
-        const targetDiv = document.getElementById('target');
-        let audioContext, analyser, dataArray;
-
-        function calibrate() { startAlpha = null; }
-
-        document.getElementById('reset-btn').onclick = () => {
-            calibrate();
-            document.querySelectorAll('.bullet-hole').forEach(e => e.remove());
-            hitData = []; drawHeatmap(); trailHistory = [];
-            streak = 0; totalScore = 0; totalShots = 0;
-            document.getElementById('streak').innerText = streak;
-            document.getElementById('snitt').innerText = "0.0";
-            mainStatus.innerText = "NOLLSTÄLLD";
-            setTimeout(() => { if(isRunning) mainStatus.innerText = "AKTIV"; }, 1000);
-        };
-
-        document.getElementById('start-btn').onclick = async () => {
-            await requestFullscreenAndLock();
-            resizeCanvases();
-            calibrate();
-            
-            if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            else if (audioContext.state === 'suspended') audioContext.resume();
-
+            // 2. Begär Gyro-tillåtelse (Kritiskt för iOS)
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                try { await DeviceOrientationEvent.requestPermission(); } catch(e) { alert("Gyro nekades."); }
-            }
-
-            if (avfyrning === "ljud") {
                 try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    const source = audioContext.createMediaStreamSource(stream);
-                    analyser = audioContext.createAnalyser(); source.connect(analyser);
-                    dataArray = new Uint8Array(analyser.frequencyBinCount); listenForAudio();
-                } catch(e) { alert("Mikrofon nekades."); return; }
+                    const permission = await DeviceOrientationEvent.requestPermission();
+                    if (permission !== 'granted') {
+                        logError("Gyroskop nekades i webbläsaren. Ladda om sidan och tillåt.");
+                        return;
+                    }
+                } catch(e) {
+                    logError("Kunde inte begära gyro. Måste köras via HTTPS.");
+                    return;
+                }
             }
 
+            // 3. Begär Mikrofon (Om valt)
+            if (trigger === 'ljud') {
+                try {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    const source = audioCtx.createMediaStreamSource(stream);
+                    analyser = audioCtx.createAnalyser();
+                    source.connect(analyser);
+                    dataArray = new Uint8Array(analyser.frequencyBinCount);
+                    listenForAudio();
+                } catch(e) {
+                    logError("Mikrofon nekades. Byt till 'Peka på skärm'.");
+                    return;
+                }
+            }
+
+            // Allt ok! Starta.
             window.addEventListener('deviceorientation', handleOrientation);
-            isRunning = true;
-            document.getElementById('start-btn').style.display = 'none';
-            document.getElementById('reset-btn').style.display = 'block';
-            mainStatus.innerText = "AKTIV"; mainStatus.style.color = "#00e676";
+            requestAnimationFrame(renderTrail);
             
-            // Starta ritloopen för spåret
-            requestAnimationFrame(renderLoop);
+            isRunning = true;
+            UI.startBtn.style.display = 'none';
+            UI.resetBtn.style.display = 'block';
+            UI.status.innerText = "AKTIV";
+            UI.status.style.color = "#00e676";
         };
 
+        UI.resetBtn.onclick = () => { startAlpha = null; };
+
+        // --- Gyro-logik ---
         function handleOrientation(event) {
             if (!isRunning) return;
+            
+            // Kolla om vi faktiskt får data (datorer ger null)
+            if (event.alpha === null) {
+                logError("Får ingen data från gyroskopet. Sitter du vid en dator?");
+                return;
+            }
+
             if (startAlpha === null) {
                 startAlpha = event.alpha; startBeta = event.beta; startGamma = event.gamma;
             }
 
-            let deltaX = 0; let deltaY = 0;
-            if (montering === "sidan") { deltaX = event.alpha - startAlpha; deltaY = event.beta - startBeta; } 
-            else { deltaX = event.gamma - startGamma; deltaY = event.beta - startBeta; }
+            let deltaX = 0, deltaY = 0;
 
-            if (deltaX > 180) deltaX -= 360; if (deltaX < -180) deltaX += 360;
-
-            cx = 50 - (deltaX * 3); cy = 50 - (deltaY * 3);
-            cx = Math.max(-10, Math.min(110, cx)); cy = Math.max(-10, Math.min(110, cy));
-
-            crosshair.style.left = cx + "%"; crosshair.style.top = cy + "%";
-            pitchIndicator.style.top = cy + "%"; 
-        }
-
-        // --- Render Loop (Spår/Trail) ---
-        function renderLoop() {
-            if (!isRunning) return;
-
-            // Lägg till nuvarande position i historiken
-            trailHistory.push({ x: cx, y: cy });
-            if (trailHistory.length > 25) trailHistory.shift(); // Spara de 25 senaste bildrutorna
-
-            trailCtx.clearRect(0, 0, trailCanvas.width, trailCanvas.height);
-            
-            if (trailHistory.length > 1) {
-                const w = trailCanvas.width; const h = trailCanvas.height;
-                
-                // Rita spåret bakifrån och fram för att skapa en fade-effekt
-                for (let i = 0; i < trailHistory.length - 1; i++) {
-                    trailCtx.beginPath();
-                    trailCtx.moveTo((trailHistory[i].x / 100) * w, (trailHistory[i].y / 100) * h);
-                    trailCtx.lineTo((trailHistory[i+1].x / 100) * w, (trailHistory[i+1].y / 100) * h);
-                    
-                    // Opacitet baserad på hur nytt spåret är
-                    const opacity = (i / trailHistory.length);
-                    trailCtx.strokeStyle = `rgba(0, 255, 255, ${opacity})`;
-                    trailCtx.lineWidth = 1 + (opacity * 3); // Blir tjockare ju närmare siktet man kommer
-                    trailCtx.stroke();
-                }
+            if (mode === 'sidan') {
+                deltaX = event.alpha - startAlpha;
+                deltaY = event.beta - startBeta;
+            } else {
+                deltaX = event.gamma - startGamma;
+                deltaY = event.beta - startBeta;
             }
-            requestAnimationFrame(renderLoop);
+
+            // Normalisera vinklar (förhindrar att siktet snurrar ett helt varv)
+            if (deltaX > 180) deltaX -= 360; 
+            if (deltaX < -180) deltaX += 360;
+
+            // Känslighet
+            cx = 50 - (deltaX * 3);
+            cy = 50 - (deltaY * 3);
+
+            // Tvinga siktet att stanna innanför boxen (0% till 100%)
+            cx = Math.max(5, Math.min(95, cx));
+            cy = Math.max(5, Math.min(95, cy));
+
+            UI.crosshair.style.left = cx + "%";
+            UI.crosshair.style.top = cy + "%";
         }
 
-        // --- Heatmap Logic ---
-        function drawHeatmap() {
-            heatCtx.clearRect(0, 0, heatCanvas.width, heatCanvas.height);
-            const w = heatCanvas.width; const h = heatCanvas.height;
-            const radius = w * 0.12; // Fläckens storlek
-
-            hitData.forEach(hit => {
-                const x = (hit.x / 100) * w;
-                const y = (hit.y / 100) * h;
-                
-                const gradient = heatCtx.createRadialGradient(x, y, 0, x, y, radius);
-                gradient.addColorStop(0, 'rgba(255, 255, 0, 0.6)'); // Gul kärna
-                gradient.addColorStop(0.3, 'rgba(255, 0, 0, 0.4)'); // Röd kant
-                gradient.addColorStop(1, 'rgba(255, 0, 0, 0)'); // Tonar ut
-
-                heatCtx.fillStyle = gradient;
-                heatCtx.beginPath();
-                heatCtx.arc(x, y, radius, 0, Math.PI * 2);
-                heatCtx.fill();
-            });
-        }
-
+        // --- Skjutlogik ---
         document.body.addEventListener('touchstart', (e) => {
-            if (isRunning && avfyrning === "skarm" && e.target.tagName !== "BUTTON" && !e.target.classList.contains('toggle-btn')) fireShot();
+            // Skjut bara om man trycker på vänstra panelen (tavlan)
+            if (isRunning && trigger === 'skarm' && e.target.closest('#left-panel')) {
+                fireShot();
+            }
         });
 
         function listenForAudio() {
-            if (!isRunning || avfyrning !== "ljud") { requestAnimationFrame(listenForAudio); return; }
+            if (!isRunning || trigger !== 'ljud') return;
             analyser.getByteFrequencyData(dataArray);
             if (Math.max(...dataArray) > 200) {
-                fireShot(); setTimeout(() => requestAnimationFrame(listenForAudio), 400); return;
+                fireShot();
+                setTimeout(() => requestAnimationFrame(listenForAudio), 400); // Cooldown
+                return;
             }
             requestAnimationFrame(listenForAudio);
         }
 
+        let totalScore = 0, totalShots = 0, streak = 0;
+
         function fireShot() {
-            if(!isRunning) return;
-            
+            if (!isRunning) return;
+
+            // Blixt
             document.body.style.backgroundColor = "#fff";
             setTimeout(() => { document.body.style.backgroundColor = "#0d0d0d"; }, 50);
 
-            if (cx >= 0 && cx <= 100 && cy >= 0 && cy <= 100) {
-                // Spara för heatmap
-                hitData.push({x: cx, y: cy});
-                drawHeatmap();
+            // Rita hål i DOM
+            const hole = document.createElement('div');
+            hole.className = 'bullet-hole';
+            hole.style.left = cx + "%"; hole.style.top = cy + "%";
+            document.getElementById('target-box').appendChild(hole);
 
-                // Markör
-                const hole = document.createElement('div');
-                hole.className = 'bullet-hole';
-                hole.style.left = cx + "%"; hole.style.top = cy + "%";
-                targetDiv.appendChild(hole);
-            }
+            // Spara data till Heatmap & rita ut
+            hitData.push({x: cx, y: cy});
+            drawHeatmap();
 
-            startBeta -= 3; // Rekyl uppåt
-            if (montering === "ovanpa") startAlpha -= (Math.random() - 0.5) * 2;
+            // Låtsas-rekyl (förskjuter startvärdet så du måste dra tillbaka telefonen)
+            startBeta -= 3; 
 
+            // Poängberäkning (distans från 50,50)
             const dist = Math.sqrt(Math.pow(cx - 50, 2) + Math.pow(cy - 50, 2));
             let points = 0;
-            if (dist < 6) points = 10; else if (dist < 16) points = 8; else if (dist < 26) points = 6; else if (dist < 36) points = 4; else if (dist < 46) points = 2;
+            if (dist < 8) points = 10;
+            else if (dist < 18) points = 8;
+            else if (dist < 28) points = 6;
+            else if (dist < 38) points = 4;
+            else if (dist < 48) points = 2;
 
             if (points > 0) {
-                streak++; mainStatus.innerText = `TRÄFF! (${points}p)`; mainStatus.style.color = "#00e676";
+                streak++; UI.status.innerText = `TRÄFF! (${points}p)`; UI.status.style.color = "#00e676";
             } else {
-                streak = 0; mainStatus.innerText = "BOM!"; mainStatus.style.color = "#ff1744";
+                streak = 0; UI.status.innerText = "BOM!"; UI.status.style.color = "#ff1744";
             }
 
             totalShots++; totalScore += points;
             document.getElementById('streak').innerText = streak;
             document.getElementById('snitt').innerText = (totalScore / totalShots).toFixed(1);
+        }
+
+        // --- RITA SPÅR & HEATMAP ---
+        function renderTrail() {
+            if (!isRunning) return;
+            trailHistory.push({ x: cx, y: cy });
+            if (trailHistory.length > 20) trailHistory.shift();
+
+            trailCtx.clearRect(0, 0, trailCanvas.width, trailCanvas.height);
+            if (trailHistory.length > 1) {
+                const w = trailCanvas.width, h = trailCanvas.height;
+                for (let i = 0; i < trailHistory.length - 1; i++) {
+                    trailCtx.beginPath();
+                    trailCtx.moveTo((trailHistory[i].x / 100) * w, (trailHistory[i].y / 100) * h);
+                    trailCtx.lineTo((trailHistory[i+1].x / 100) * w, (trailHistory[i+1].y / 100) * h);
+                    
+                    const opacity = (i / trailHistory.length);
+                    trailCtx.strokeStyle = `rgba(0, 255, 255, ${opacity})`;
+                    trailCtx.lineWidth = 2;
+                    trailCtx.stroke();
+                }
+            }
+            requestAnimationFrame(renderTrail);
+        }
+
+        function drawHeatmap() {
+            heatCtx.clearRect(0, 0, heatCanvas.width, heatCanvas.height);
+            const w = heatCanvas.width, h = heatCanvas.height;
+            const radius = w * 0.15;
+
+            hitData.forEach(hit => {
+                const x = (hit.x / 100) * w;
+                const y = (hit.y / 100) * h;
+                const gradient = heatCtx.createRadialGradient(x, y, 0, x, y, radius);
+                gradient.addColorStop(0, 'rgba(255, 255, 0, 0.6)');
+                gradient.addColorStop(0.4, 'rgba(255, 0, 0, 0.3)');
+                gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+                heatCtx.fillStyle = gradient;
+                heatCtx.beginPath(); heatCtx.arc(x, y, radius, 0, Math.PI * 2); heatCtx.fill();
+            });
         }
     </script>
 </body>
