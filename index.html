@@ -2,312 +2,407 @@
 <html lang="sv">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, viewport-fit=cover">
-    <title>Mantis-Klonen v2.2.0 PRO</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=landscape">
+    <title>Handhållen Simulator (Standalone)</title>
     <style>
-        * { box-sizing: border-box; }
-        body {
-            margin: 0; padding: 0; background-color: #030303; color: #ffffff;
-            font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: row; 
-            height: 100dvh; width: 100vw; overflow: hidden;
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap');
+
+        * { box-sizing: border-box; user-select: none; }
+        body { 
+            margin: 0; padding: 0; background-color: #0d0d0d; color: #fff; 
+            font-family: 'Roboto', sans-serif; display: flex; height: 100vh; width: 100vw; overflow: hidden;
+            transition: background-color 0.05s;
         }
 
-        #visuals-panel { 
-            flex: 1.3; display: flex; flex-direction: column; align-items: center; 
-            justify-content: space-evenly; padding: 10px; background-color: #111;
-            border-right: 2px solid #333; position: relative;
+        /* --- VÄNSTER PANEL (Tavla & Sikte) --- */
+        #left-panel {
+            width: 45%; height: 100%; display: flex; flex-direction: column; 
+            align-items: center; justify-content: center; gap: 20px; padding: 20px;
+            border-right: 1px solid #333;
         }
 
-        .view-container { display: flex; flex-direction: column; align-items: center; width: 100%; height: 48%; }
-        canvas { 
-            background-color: #1a1a1a; border-radius: 8px; border: 1px solid #333;
-            max-width: 100%; max-height: 85%; object-fit: contain; 
+        #target-box {
+            width: 250px; height: 250px; background: #1a1a1a; border-radius: 10px; 
+            display: flex; align-items: center; justify-content: center; position: relative;
+            overflow: hidden; border: 2px solid #222;
         }
 
-        #controls-panel { 
-            flex: 1; display: flex; flex-direction: column; padding: 15px; 
-            background-color: #050505; justify-content: flex-start;
+        /* Måltavlan (Röd/Svart) */
+        #target {
+            width: 90%; height: 90%; border-radius: 50%;
+            background: repeating-radial-gradient(
+                circle,
+                #aa0000 0%, #aa0000 10%,
+                #111 10%, #111 20%,
+                #aa0000 20%, #aa0000 30%,
+                #111 30%, #111 40%,
+                #aa0000 40%, #aa0000 50%
+            );
+            position: relative;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
         }
 
-        #scoreBoard { font-size: 26px; font-weight: bold; text-align: center; color: #00FFFF; margin-bottom: 5px; }
+        /* Hårkors / Träffmarkör */
+        #crosshair {
+            position: absolute; width: 12px; height: 12px; background: cyan; 
+            border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            box-shadow: 0 0 10px cyan, 0 0 20px cyan; transition: top 0.05s, left 0.05s; z-index: 10;
+        }
         
-        #diagBoard { 
-            background: rgba(0, 255, 255, 0.05); border: 1px solid #00FFFF;
-            padding: 10px; border-radius: 10px; font-size: 14px; text-align: center;
-            color: #00FFFF; margin-bottom: 10px; min-height: 80px;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        .bullet-hole {
+            position: absolute; width: 10px; height: 10px; background: #ddd; border-radius: 50%;
+            transform: translate(-50%, -50%); box-shadow: inset 0 0 5px #000, 0 0 3px rgba(255,255,255,0.5); z-index: 5;
+            animation: hitMark 0.3s ease-out;
         }
 
-        .stats-row { font-size: 11px; color: #888; display: flex; gap: 10px; margin-top: 5px; }
+        @keyframes hitMark {
+            0% { transform: translate(-50%, -50%) scale(2); opacity: 0; background: yellow; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; background: #ddd; }
+        }
+
+        /* Sikt-indikatorn (Grå låda med röd linje) */
+        #sight-box {
+            width: 250px; height: 60px; background: #1a1a1a; border-radius: 10px; border: 1px solid #333;
+            position: relative; display: flex; flex-direction: column; justify-content: space-evenly;
+        }
+        .sight-line { width: 100%; height: 2px; background: #333; }
+        .sight-line.center { background: #aa0000; height: 3px; }
+        #pitch-indicator {
+            position: absolute; width: 100%; height: 4px; background: cyan; top: 50%;
+            transform: translateY(-50%); transition: top 0.05s; opacity: 0.8; box-shadow: 0 0 5px cyan;
+        }
+
+        /* --- HÖGER PANEL (Kontroller) --- */
+        #right-panel {
+            width: 55%; height: 100%; display: flex; flex-direction: column; padding: 20px;
+            overflow-y: auto;
+        }
+
+        #status-header { text-align: center; margin-bottom: 15px; }
+        #main-status { color: #00ffff; font-size: 36px; font-weight: 900; margin: 0; letter-spacing: 2px; text-shadow: 0 0 10px rgba(0,255,255,0.3);}
+        #sub-status { color: #aaa; font-size: 14px; margin: 5px 0; }
+        #stats { color: #fff; font-size: 16px; margin-top: 10px; font-weight: bold; background: #222; padding: 10px; border-radius: 5px;}
+
+        /* Knapp-grupper */
+        .control-group { margin-bottom: 15px; }
+        .control-label { font-size: 11px; color: #888; text-transform: uppercase; margin-bottom: 5px; letter-spacing: 1px; }
+        .button-row { display: flex; gap: 8px; width: 100%; }
         
-        .section-label { font-size: 10px; color: #666; margin-bottom: 3px; text-transform: uppercase; }
-        .mode-selector { display: flex; gap: 5px; margin-bottom: 10px; }
-        .mode-btn {
-            flex: 1; padding: 8px; font-size: 11px; background: #222; color: #aaa;
-            border: 1px solid #444; border-radius: 5px; cursor: pointer;
+        .toggle-btn {
+            flex: 1; background: #222; color: #aaa; border: 2px solid #444; 
+            padding: 12px 0; font-size: 14px; font-weight: 700; border-radius: 6px;
+            text-transform: uppercase; cursor: pointer; transition: 0.2s;
         }
-        .mode-btn.active { background: #007bff; color: white; border-color: #fff; }
         
-        .trig-btn.active { background: #ff9800; color: #000; border-color: #fff; }
+        .toggle-btn.active-blue { background: #007bff; color: #fff; border-color: #0056b3; }
+        .toggle-btn.active-orange { background: #ff9800; color: #fff; border-color: #e65100; }
 
-        button { border: none; font-weight: bold; cursor: pointer; transition: 0.1s; border-radius: 10px; }
-        button:active { transform: scale(0.98); }
-
-        #startBtn { 
-            width: 100%; padding: 15px; background: #2e7d32; color: white; font-size: 16px; margin-top: 5px;
+        /* Actions knappar */
+        .action-row { display: flex; gap: 10px; margin-top: auto; }
+        
+        #start-btn, #reset-btn {
+            flex: 1; color: #fff; padding: 15px; font-size: 16px; font-weight: 900; 
+            border-radius: 6px; cursor: pointer; transition: 0.2s; border: none;
         }
+        
+        #start-btn { background: #2e7d32; box-shadow: 0 4px 0 #1b5e20; }
+        #start-btn:active { transform: translateY(4px); box-shadow: 0 0 0 #1b5e20; }
+        
+        #reset-btn { background: #d32f2f; box-shadow: 0 4px 0 #b71c1c; display: none; }
+        #reset-btn:active { transform: translateY(4px); box-shadow: 0 0 0 #b71c1c; }
 
-        #recalibBtn {
-            width: 100%; padding: 15px; background: #0277bd; color: white; font-size: 16px; 
-            margin-top: 5px; display: none; border-bottom: 4px solid #014b78;
-        }
-
-        #shootBtn { 
-            background-color: #c62828; display: none; width: 100%; margin-top: 10px;
-            flex-grow: 1; font-size: 32px; border-bottom: 8px solid #5d1111; color: white;
-        }
-
-        #sensorStatus { font-size: 10px; color: #888; text-align: center; margin-top: 5px; min-height: 15px;}
-        #version-tag { position: absolute; bottom: 5px; left: 10px; font-size: 10px; color: #444; }
     </style>
 </head>
 <body>
 
-    <div id="visuals-panel">
-        <div class="view-container"><canvas id="frontCanvas" width="600" height="600"></canvas></div>
-        <div class="view-container"><canvas id="sideCanvas" width="600" height="300"></canvas></div>
-        <div id="version-tag">Build v2.2.0 PRO-ALL-IN-ONE</div>
+    <div id="left-panel">
+        <div id="target-box">
+            <div id="target">
+                <div id="crosshair"></div>
+            </div>
+        </div>
+        
+        <div id="sight-box">
+            <div class="sight-line"></div>
+            <div class="sight-line center"></div>
+            <div class="sight-line"></div>
+            <div id="pitch-indicator"></div>
+        </div>
     </div>
 
-    <div id="controls-panel">
-        <div id="scoreBoard">VÄNTAR...</div>
-        <div id="diagBoard">
-            <div id="diagText">Rikta mot tavlan och kalibrera.</div>
-            <div class="stats-row">
-                <span id="streakStat">Streak: 0</span>
-                <span id="avgStat">Snitt: 0</span>
+    <div id="right-panel">
+        <div id="status-header">
+            <h1 id="main-status">VÄNTAR...</h1>
+            <p id="sub-status">Rikta mot tavlan och klicka start.</p>
+            <div id="stats">Träffar i rad: <span id="streak" style="color:#ff9800">0</span> | Poängsnitt: <span id="snitt" style="color:#00ffff">0.0</span></div>
+        </div>
+
+        <div class="control-group">
+            <div class="control-label">Enhetens Placering</div>
+            <div class="button-row">
+                <button class="toggle-btn active-blue" id="btn-montering-sidan">På Sidan</button>
+                <button class="toggle-btn" id="btn-montering-ovanpa">Ovanpå</button>
             </div>
         </div>
 
-        <div class="section-label">MONTERING</div>
-        <div class="mode-selector">
-            <button id="mntSide" class="mode-btn active">SIDAN</button>
-            <button id="mntTop" class="mode-btn">OVANPÅ</button>
+        <div class="control-group">
+            <div class="control-label">Avtryckare</div>
+            <div class="button-row">
+                <button class="toggle-btn active-orange" id="btn-avfyrning-skarm">Skärm</button>
+                <button class="toggle-btn" id="btn-avfyrning-ljud">Ljud (Klick)</button>
+                <button class="toggle-btn" id="btn-avfyrning-magnet">Magnet</button>
+            </div>
         </div>
 
-        <div class="section-label">AVFYRNING</div>
-        <div class="mode-selector">
-            <button id="trigScreen" class="mode-btn trig-btn active">SKÄRM</button>
-            <button id="trigMag" class="mode-btn trig-btn">MAGNET</button>
-            <button id="trigMic" class="mode-btn trig-btn">LJUD</button>
+        <div class="action-row">
+            <button id="start-btn">KALIBRERA & STARTA</button>
+            <button id="reset-btn">RENSA TAVLA</button>
         </div>
-        
-        <button id="startBtn">KALIBRERA & STARTA</button>
-        <button id="recalibBtn">🎯 CENTRERA SIKTET</button>
-        <button id="shootBtn">AVFYRA</button>
-        <div id="sensorStatus">Klicka på Start för att aktivera.</div>
     </div>
 
     <script>
-        const cFront = document.getElementById('frontCanvas'), ctxF = cFront.getContext('2d');
-        const cSide = document.getElementById('sideCanvas'), ctxS = cSide.getContext('2d');
-        const btnStart = document.getElementById('startBtn'), btnShoot = document.getElementById('shootBtn'), btnRecalib = document.getElementById('recalibBtn');
-        const elScore = document.getElementById('scoreBoard'), elDiag = document.getElementById('diagText'), elStatus = document.getElementById('sensorStatus');
+        // --- UI & Toggles ---
+        let montering = "sidan";
+        let avfyrning = "skarm";
 
-        let isAiming = false, trace = [], shotHistory = [], audioCtx = null;
-        let startA = null, startB = null, startG = null;
-        let rawX = 300, rawY = 300;
-        let streak = 0, totalScore = 0;
-        const TIME_WINDOW = 3000;
+        document.getElementById('btn-montering-sidan').onclick = function() {
+            this.classList.add('active-blue'); document.getElementById('btn-montering-ovanpa').classList.remove('active-blue');
+            montering = "sidan"; calibrate();
+        };
+        document.getElementById('btn-montering-ovanpa').onclick = function() {
+            this.classList.add('active-blue'); document.getElementById('btn-montering-sidan').classList.remove('active-blue');
+            montering = "ovanpa"; calibrate();
+        };
 
-        let mountMode = 'side', triggerMode = 'screen', initialMag = null; 
-        const magThreshold = 45, micThreshold = 0.5; 
-        let micCtx = null, analyser = null, micStream = null, lastFireTime = 0;
+        const setAvfyrning = (mode, btn) => {
+            ['skarm', 'magnet', 'ljud'].forEach(m => document.getElementById(`btn-avfyrning-${m}`).classList.remove('active-orange'));
+            document.getElementById(btn).classList.add('active-orange');
+            avfyrning = mode;
+        };
+        document.getElementById('btn-avfyrning-skarm').onclick = () => setAvfyrning('skarm', 'btn-avfyrning-skarm');
+        document.getElementById('btn-avfyrning-magnet').onclick = () => setAvfyrning('magnet', 'btn-avfyrning-magnet');
+        document.getElementById('btn-avfyrning-ljud').onclick = () => setAvfyrning('ljud', 'btn-avfyrning-ljud');
 
-        // UI Handlers
-        document.getElementById('mntSide').onclick = () => { mountMode = 'side'; updateUI(); };
-        document.getElementById('mntTop').onclick = () => { mountMode = 'top'; updateUI(); };
-        document.getElementById('trigScreen').onclick = () => { triggerMode = 'screen'; updateUI(); };
-        document.getElementById('trigMag').onclick = () => { triggerMode = 'mag'; updateUI(); };
-        document.getElementById('trigMic').onclick = () => { triggerMode = 'mic'; updateUI(); };
+        // --- Core Logic ---
+        let isRunning = false;
+        let startAlpha = null, startBeta = null, startGamma = null;
+        let cx = 50, cy = 50; 
+        
+        let streak = 0;
+        let totalScore = 0;
+        let totalShots = 0;
 
-        function updateUI() {
-            document.getElementById('mntSide').classList.toggle('active', mountMode === 'side');
-            document.getElementById('mntTop').classList.toggle('active', mountMode === 'top');
-            document.getElementById('trigScreen').classList.toggle('active', triggerMode === 'screen');
-            document.getElementById('trigMag').classList.toggle('active', triggerMode === 'mag');
-            document.getElementById('trigMic').classList.toggle('active', triggerMode === 'mic');
-            elStatus.innerText = `Läge: ${triggerMode.toUpperCase()}`;
+        const mainStatus = document.getElementById('main-status');
+        const crosshair = document.getElementById('crosshair');
+        const pitchIndicator = document.getElementById('pitch-indicator');
+        const targetDiv = document.getElementById('target');
+        
+        // Sensorer & Ljud
+        let audioContext, analyser, dataArray;
+        let magSensor = null;
+        let lastMagValue = 0;
+
+        function calibrate() {
+            startAlpha = null; // Tvingar omkalibrering nästa frame
         }
 
-        function coachSay(text) {
-            const msg = new SpeechSynthesisUtterance(text);
-            msg.lang = 'sv-SE'; window.speechSynthesis.speak(msg);
+        document.getElementById('reset-btn').onclick = () => {
+            calibrate();
+            document.querySelectorAll('.bullet-hole').forEach(e => e.remove());
+            streak = 0; totalScore = 0; totalShots = 0;
+            document.getElementById('streak').innerText = streak;
+            document.getElementById('snitt').innerText = "0.0";
+            mainStatus.innerText = "OMKALIBRERAD";
+            setTimeout(() => { if(isRunning) mainStatus.innerText = "AKTIV"; }, 1000);
+        };
+
+        document.getElementById('start-btn').onclick = async () => {
+            calibrate();
+            
+            // Ljudmotor för effekter (Måste startas via användarinteraktion)
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            } else if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+
+            // Gyro
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                try { 
+                    const permissionState = await DeviceOrientationEvent.requestPermission();
+                    if(permissionState !== 'granted') throw new Error("Nekad");
+                } catch(e) { alert("Gyro-åtkomst nekades. Krävs för att sikta."); }
+            }
+
+            // Ljud-avtryckare
+            if (avfyrning === "ljud") {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    const source = audioContext.createMediaStreamSource(stream);
+                    analyser = audioContext.createAnalyser();
+                    source.connect(analyser);
+                    dataArray = new Uint8Array(analyser.frequencyBinCount);
+                    listenForAudio();
+                } catch(e) { alert("Mikrofon nekades. Byt till Skärm-avfyrning."); return; }
+            }
+
+            // Magnet-avtryckare (Kräver Generic Sensor API flagga i Chrome)
+            if (avfyrning === "magnet" && 'Magnetometer' in window) {
+                try {
+                    magSensor = new Magnetometer({frequency: 10});
+                    magSensor.addEventListener('reading', () => {
+                        let strength = Math.sqrt(magSensor.x**2 + magSensor.y**2 + magSensor.z**2);
+                        if (lastMagValue !== 0 && Math.abs(strength - lastMagValue) > 30) { // Tröskelvärde för magnet
+                            fireShot();
+                        }
+                        lastMagValue = strength;
+                    });
+                    magSensor.start();
+                } catch(e) { console.warn("Magnetometer stöds ej direkt."); }
+            } else if (avfyrning === "magnet") {
+                alert("Magnetometer API stöds troligen inte i din nuvarande webbläsare/miljö. Använd Skärm-avfyrning istället.");
+            }
+
+            window.addEventListener('deviceorientation', handleOrientation);
+            
+            isRunning = true;
+            document.getElementById('start-btn').style.display = 'none';
+            document.getElementById('reset-btn').style.display = 'block';
+            mainStatus.innerText = "AKTIV";
+            mainStatus.style.color = "#00e676";
+            document.getElementById('sub-status').innerText = "Vapnet är skarpt.";
+        };
+
+        function handleOrientation(event) {
+            if (!isRunning) return;
+            if (startAlpha === null) {
+                startAlpha = event.alpha; startBeta = event.beta; startGamma = event.gamma;
+            }
+
+            let deltaX = 0; let deltaY = 0;
+
+            if (montering === "sidan") {
+                deltaX = event.alpha - startAlpha;
+                deltaY = event.beta - startBeta;
+            } else {
+                deltaX = event.gamma - startGamma;
+                deltaY = event.beta - startBeta;
+            }
+
+            if (deltaX > 180) deltaX -= 360; if (deltaX < -180) deltaX += 360;
+
+            cx = 50 - (deltaX * 3); // Ökad känslighet
+            cy = 50 - (deltaY * 3);
+
+            // Begränsa så siktet inte åker helt utanför skärmen
+            cx = Math.max(-20, Math.min(120, cx));
+            cy = Math.max(-20, Math.min(120, cy));
+
+            crosshair.style.left = cx + "%";
+            crosshair.style.top = cy + "%";
+            pitchIndicator.style.top = cy + "%"; 
         }
 
-        function bang() {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
-            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(160, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(20, audioCtx.currentTime + 0.1);
-            gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
-            gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.2);
-        }
-
-        window.addEventListener('deviceorientation', e => {
-            if(!isAiming) return;
-            if(startA === null) { startA=e.alpha; startB=e.beta; startG=e.gamma; }
-            let dx, dy;
-            if (mountMode === 'side') { dx = e.gamma - startG; dy = e.alpha - startA; } 
-            else { dx = e.alpha - startA; dy = e.beta - startB; }
-            if (dx > 180) dx -= 360; if (dx < -180) dx += 360;
-            rawX = 300 + (dx * 22); rawY = 300 - (dy * 22);
-            trace.push({x:rawX, y:rawY, time:Date.now()});
-            if(trace.length > 200) trace.shift();
-
-            if (triggerMode === 'mag' && (e.absolute || e.webkitCompassHeading)) {
-                let currentMag = e.webkitCompassHeading || e.alpha;
-                if (initialMag === null) initialMag = currentMag;
-                let magDiff = Math.abs(currentMag - initialMag);
-                if (magDiff > 180) magDiff = 360 - magDiff;
-                if (magDiff > magThreshold) triggerFire();
+        // --- Avfyrningsmetoder ---
+        
+        // 1. Skärm
+        document.body.addEventListener('touchstart', (e) => {
+            if (isRunning && avfyrning === "skarm" && e.target.tagName !== "BUTTON" && !e.target.classList.contains('toggle-btn')) {
+                fireShot();
             }
         });
 
-        async function startMic() {
-            if(micStream) return;
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                micStream = stream;
-                micCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const source = micCtx.createMediaStreamSource(stream);
-                analyser = micCtx.createAnalyser();
-                source.connect(analyser);
-                listenMic();
-            } catch (err) { alert("Mic nekad."); triggerMode = 'screen'; updateUI(); }
+        // 2. Ljud (Mic)
+        function listenForAudio() {
+            if (!isRunning || avfyrning !== "ljud") {
+                requestAnimationFrame(listenForAudio); return;
+            }
+            analyser.getByteFrequencyData(dataArray);
+            let maxVol = Math.max(...dataArray);
+            if (maxVol > 200) { // Höjt tröskelvärde för att undvika falska skott
+                fireShot();
+                setTimeout(() => requestAnimationFrame(listenForAudio), 400); // Cooldown
+                return;
+            }
+            requestAnimationFrame(listenForAudio);
         }
 
-        function listenMic() {
-            if (triggerMode !== 'mic' || !isAiming) { requestAnimationFrame(listenMic); return; }
-            const dataArray = new Uint8Array(analyser.frequencyBinCount);
-            analyser.getByteTimeDomainData(dataArray);
-            let maxVol = 0;
-            for(let i=0; i<dataArray.length; i++) {
-                let v = Math.abs(dataArray[i] - 128);
-                if(v > maxVol) maxVol = v;
-            }
-            if (maxVol / 128 > micThreshold && (Date.now() - lastFireTime > 1000)) triggerFire();
-            requestAnimationFrame(listenMic);
-        }
+        // --- Ljudeffekter (Syntetiska) ---
+        function playSound(type) {
+            if(!audioContext) return;
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
 
-        function getFeedback() {
-            const hit = trace[trace.length - 1];
-            const startTrigger = trace[Math.max(0, trace.length - 15)]; 
-            const dX = hit.x - startTrigger.x, dY = hit.y - startTrigger.y;
-            const offX = hit.x - 300, offY = hit.y - 300;
-            let cause = [], result = [];
-            if (dY > 22) cause.push("dippade pipan"); else if (dY < -22) cause.push("lyfte pipan");
-            if (dX > 22) cause.push("drog åt höger"); else if (dX < -22) cause.push("ryckte avtryckaren");
-            if (offY > 35) result.push("lågt"); else if (offY < -35) result.push("högt");
-            if (offX > 35) result.push("till vänster"); else if (offX < -35) result.push("till höger");
-            if (cause.length === 0 && result.length === 0) return { text: "Perfekt avfyrning!", voice: "Snyggt skott!" };
-            const causeStr = cause.length > 0 ? cause.join(" och ") : "ostödigt sikte";
-            const resultStr = result.length > 0 ? "skottet gick " + result.join(" och ") : "träffen blev ändå bra";
-            return { text: `Analys: ${causeStr.charAt(0).toUpperCase() + causeStr.slice(1)}, ${resultStr}.`, voice: `${causeStr}. ${resultStr}.` };
-        }
-
-        function triggerFire() {
-            if (!isAiming) return;
-            isAiming = false; lastFireTime = Date.now(); 
-            bang();
-            if(navigator.vibrate) navigator.vibrate(80);
-            const hit = trace[trace.length-1] || {x:300, y:300};
-            const dist = Math.sqrt(Math.pow(hit.x-300,2) + Math.pow(hit.y-300,2));
-            const score = Math.max(0, 100 - (dist/3.2));
-            totalScore += score; shotHistory.push(hit);
-            const fb = getFeedback();
-            if (score > 90 && !fb.text.includes("ryckte") && !fb.text.includes("dippade")) streak++; else streak = 0;
-            elScore.innerText = `POÄNG: ${score.toFixed(1)}`;
-            elDiag.innerText = fb.text;
-            document.getElementById('streakStat').innerText = `Streak: ${streak}`;
-            document.getElementById('avgStat').innerText = `Snitt: ${(totalScore / shotHistory.length).toFixed(1)}`;
-            coachSay(`${score.toFixed(0)} poäng. ${fb.voice}`);
-            btnShoot.style.display = 'none'; btnRecalib.style.display = 'none'; btnStart.style.display = 'block';
-            btnStart.innerText = "LADDA OM";
-        }
-
-        btnStart.onclick = async () => {
-            if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
-            if (typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission) {
-                try { await DeviceOrientationEvent.requestPermission(); } catch(e) {}
-            }
-            if (triggerMode === 'mic') await startMic();
-            isAiming = true; startA = null; initialMag = null; trace = [];
-            btnStart.style.display = 'none'; btnRecalib.style.display = 'block'; btnShoot.style.display = 'block';
-            if (triggerMode !== 'screen') btnShoot.innerText = "NÖD-AVFYRNING"; else btnShoot.innerText = "AVFYRA";
-            elDiag.innerText = "SIKTAR..."; renderLoop();
-        };
-
-        btnRecalib.onclick = () => {
-            startA = null; // Tvingar ny nollpunkt
-            if(navigator.vibrate) navigator.vibrate(40);
-            elDiag.innerText = "Centrerat!";
-            setTimeout(() => { if(isAiming) elDiag.innerText = "SIKTAR..."; }, 1000);
-        };
-
-        btnShoot.onclick = triggerFire;
-
-        function drawFront() {
-            ctxF.clearRect(0,0,600,600);
-            for(let i=5; i>0; i--) {
-                ctxF.beginPath(); ctxF.arc(300,300, i*55, 0, 7);
-                ctxF.fillStyle = i%2===0 ? '#050505' : '#8b0000'; ctxF.fill();
-                ctxF.strokeStyle = '#222'; ctxF.stroke();
-            }
-            shotHistory.forEach(s => { ctxF.fillStyle='rgba(0,255,255,0.3)'; ctxF.beginPath(); ctxF.arc(s.x,s.y,8,0,7); ctxF.fill(); });
-            if (trace.length > 1) {
-                ctxF.lineWidth = 5;
-                for(let i=1; i<trace.length; i++) {
-                    ctxF.strokeStyle = (Date.now()-trace[i].time < 500 && !isAiming) ? '#FFD700' : '#00ff00';
-                    ctxF.beginPath(); ctxF.moveTo(trace[i-1].x, trace[i-1].y); ctxF.lineTo(trace[i].x, trace[i].y); ctxF.stroke();
-                }
-            }
-            const last = isAiming ? {x:rawX, y:rawY} : (trace.length > 0 ? trace[trace.length-1] : null);
-            if(last) { ctxF.fillStyle = isAiming ? '#fff' : '#00FFFF'; ctxF.beginPath(); ctxF.arc(last.x, last.y, 11, 0, 7); ctxF.fill(); }
-        }
-
-        function drawSide() {
-            ctxS.clearRect(0, 0, 600, 300);
-            const cY = 150; 
-            ctxS.lineWidth = 4; ctxS.strokeStyle = '#8b0000';
-            ctxS.beginPath(); ctxS.moveTo(0, cY); ctxS.lineTo(600, cY); ctxS.stroke();
-            ctxS.strokeStyle = '#333';
-            ctxS.beginPath(); ctxS.moveTo(0, cY-75); ctxS.lineTo(600, cY-75); ctxS.stroke();
-            ctxS.beginPath(); ctxS.moveTo(0, cY+75); ctxS.lineTo(600, cY+75); ctxS.stroke();
-            if (trace.length < 2) return;
-            const refTime = isAiming ? Date.now() : trace[trace.length-1].time;
-            ctxS.lineWidth = 4;
-            for (let i = 1; i < trace.length; i++) {
-                const p1 = trace[i-1], p2 = trace[i];
-                if (refTime - p2.time > TIME_WINDOW) continue;
-                const x1 = 600 - ((refTime - p1.time)/TIME_WINDOW)*600;
-                const x2 = 600 - ((refTime - p2.time)/TIME_WINDOW)*600;
-                const y1 = cY + (p1.y - 300); const y2 = cY + (p2.y - 300);
-                ctxS.beginPath(); ctxS.moveTo(x1, y1); ctxS.lineTo(x2, y2);
-                ctxS.strokeStyle = (Date.now() - p2.time < 500 && !isAiming) ? '#FFD700' : '#00ff00';
-                ctxS.stroke();
-            }
-            if (!isAiming && trace.length > 0) {
-                const hit = trace[trace.length-1];
-                ctxS.fillStyle = '#00FFFF'; ctxS.beginPath(); ctxS.arc(600, cY + (hit.y-300), 8, 0, 7); ctxS.fill();
+            if (type === 'shoot') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(150, audioContext.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.5, audioContext.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                osc.start(); osc.stop(audioContext.currentTime + 0.3);
+            } else if (type === 'hit') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, audioContext.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1200, audioContext.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                osc.start(); osc.stop(audioContext.currentTime + 0.5);
             }
         }
 
-        function renderLoop() { drawFront(); drawSide(); if (isAiming) requestAnimationFrame(renderLoop); }
-        drawFront(); drawSide();
+        // --- Skott & Poäng ---
+        function fireShot() {
+            if(!isRunning) return;
+            
+            playSound('shoot');
+
+            // Visuell Blixt
+            document.body.style.backgroundColor = "#fff";
+            setTimeout(() => { document.body.style.backgroundColor = "#0d0d0d"; }, 50);
+
+            // Rita skotthål om vi träffar "pappret"
+            if (cx >= 0 && cx <= 100 && cy >= 0 && cy <= 100) {
+                const hole = document.createElement('div');
+                hole.className = 'bullet-hole';
+                hole.style.left = cx + "%"; hole.style.top = cy + "%";
+                targetDiv.appendChild(hole);
+            }
+
+            // Simulera Rekyl (Muzzle Rise)
+            // Vi lurar systemet genom att ändra startBeta så siktet hoppar uppåt
+            startBeta -= 3; // Hoppar upp ca 3 grader
+            if (montering === "ovanpa") startAlpha -= (Math.random() - 0.5) * 2; // Lite spridning i sidled
+
+            // Räkna ut träff (avstånd från 50,50 i % -> pixlar ungefär)
+            const dist = Math.sqrt(Math.pow(cx - 50, 2) + Math.pow(cy - 50, 2));
+            
+            let points = 0;
+            if (dist < 6) points = 10;
+            else if (dist < 16) points = 8;
+            else if (dist < 26) points = 6;
+            else if (dist < 36) points = 4;
+            else if (dist < 46) points = 2;
+
+            if (points > 0) {
+                streak++;
+                mainStatus.innerText = `TRÄFF! (${points}p)`; 
+                mainStatus.style.color = "#00e676";
+                document.getElementById('target-box').style.borderColor = "#00e676";
+                setTimeout(() => document.getElementById('target-box').style.borderColor = "#222", 200);
+                if (points >= 8) playSound('hit'); // Ding-ljud för bra träff
+            } else {
+                streak = 0;
+                mainStatus.innerText = "BOM!"; mainStatus.style.color = "#ff1744";
+            }
+
+            totalShots++;
+            totalScore += points;
+            
+            document.getElementById('streak').innerText = streak;
+            document.getElementById('snitt').innerText = (totalScore / totalShots).toFixed(1);
+        }
     </script>
 </body>
 </html>
