@@ -145,6 +145,7 @@
         
         let lastShotTime = 0; 
         let smoothedVibration = 0;
+        let lastAcc = {x: 0, y: 0, z: 0}; // För att beräkna delta-acceleration
         
         // --- NY SEMI-AUTO LOGIK ---
         let triggerReady = true; 
@@ -169,43 +170,52 @@
 
         // --- DEVICEMOTION: SIKTE & VIBRATION (AVTRYCKARE) ---
         window.addEventListener('devicemotion', (e) => {
-            // 1. LÄS AV VIBRATIONER FÖR MOTORN (ACCELERATION)
-            let acc = e.acceleration;
+            // 1. LÄS AV VIBRATIONER FÖR MOTORN (ACCELERATION DELTA)
+            // Använd fallback om ren acceleration saknas på enheten
+            let acc = e.acceleration || e.accelerationIncludingGravity; 
+            
             if (acc) {
-                // Summera g-krafterna för att hitta skakningar
-                let rawShake = Math.abs(acc.x || 0) + Math.abs(acc.y || 0) + Math.abs(acc.z || 0);
+                // Beräkna "jerk" (förändring) istället för absolut g-kraft.
+                // Detta fångar extremt snabba, små vibrationer från en motor perfekt.
+                let deltaX = Math.abs((acc.x || 0) - lastAcc.x);
+                let deltaY = Math.abs((acc.y || 0) - lastAcc.y);
+                let deltaZ = Math.abs((acc.z || 0) - lastAcc.z);
+
+                // Spara nuvarande för nästa jämförelse
+                lastAcc = { x: acc.x || 0, y: acc.y || 0, z: acc.z || 0 };
+
+                let rawShake = deltaX + deltaY + deltaZ;
                 
-                // Mjuka upp värdet lite för jämnare läsning
-                smoothedVibration = smoothedVibration * 0.6 + rawShake * 0.4;
+                // Mjuka upp värdet för att undvika spikar, ökad reaktionstid
+                smoothedVibration = smoothedVibration * 0.4 + rawShake * 0.6; 
                 
                 let threshold = parseFloat(document.getElementById('vibe-slider').value);
                 const micDot = document.getElementById('mic-indicator');
 
                 if (smoothedVibration > threshold) {
-                    micDot.classList.add('active'); // Indikerar motorn är igång
+                    micDot.classList.add('active'); // Indikerar att motorn är igång
                     
-                    // Om avtryckaren är redo och vi väntat tillräckligt länge
                     let now = Date.now();
                     if (triggerReady && (now - lastShotTime > minTimeBetweenShots)) {
                         registerShot();
-                        triggerReady = false; // Lås avtryckaren (måste släppas innan nästa skott)
+                        triggerReady = false; 
                     }
-                } else if (smoothedVibration < (threshold * 0.6)) {
-                    // Motorn har stannat (vi använder 60% av tröskelvärdet för att skapa lite marginal)
+                } else if (smoothedVibration < (threshold * 0.5)) {
+                    // Motorn har stannat (vi kräver att den går ner till hälften av tröskelvärdet)
                     micDot.classList.remove('active');
-                    triggerReady = true; // Lås upp avtryckaren för nästa skott
+                    triggerReady = true; 
                 }
             }
 
-            // 2. LÄS AV ROTATION FÖR SIKTET (Gimbal Lock Säkert)
+            // 2. LÄS AV ROTATION FÖR SIKTET (Korrigerat för Liggande/Landscape)
             let rr = e.rotationRate;
             if(!rr || rr.beta === null) return;
 
-            let rotX = rr.beta;   
-            let rotY = rr.gamma;  
-            let rotZ = rr.alpha;  
+            let rotX = rr.beta;   // Pitch framåt/bakåt (i stående läge)
+            let rotY = rr.gamma;  // Lutning höger/vänster (i stående läge)
+            let rotZ = rr.alpha;  // Vridning platt på bordet
 
-            // Filtrera bort brus för siktet, men behåll rörelser
+            // Filtrera bort mikroskakningar från handen
             if(Math.abs(rotX) < 0.2) rotX = 0;
             if(Math.abs(rotY) < 0.2) rotY = 0;
             if(Math.abs(rotZ) < 0.2) rotZ = 0;
@@ -215,17 +225,24 @@
             const invY = document.getElementById('inv-y').checked ? -1 : 1;
             
             let moveX = 0, moveY = 0;
-            const sensitivity = 0.25; 
+            
+            // I liggande läge (landscape) byter hårdvaruaxlarna referenspunkt i förhållande till skärmen.
+            if (mount === 'top') { 
+                moveX = rotZ; 
+                moveY = rotY; 
+            } else { 
+                moveX = rotY; 
+                moveY = rotZ; 
+            }
 
-            if (mount === 'top') { moveX = rotX; moveY = rotY; } 
-            else { moveX = rotY; moveY = rotZ; }
+            const sensitivity = 0.25; 
 
             rawAimX += (moveX * sensitivity * invX);
             rawAimY += (moveY * sensitivity * invY);
             rawAimX = Math.max(-20, Math.min(120, rawAimX));
             rawAimY = Math.max(-20, Math.min(120, rawAimY));
 
-            // Blixtsnabb respons för det främre järnsiktet
+            // Järnsiktets blixtsnabba respons
             sightVelX -= moveX * 0.8 * invX;
             sightVelY -= moveY * 0.8 * invY;
         });
